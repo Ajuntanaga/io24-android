@@ -13,7 +13,7 @@ making either controller depend on the other at runtime.
 Android phone -> USB-C -> Revelator io24
 ```
 
-Version 0.3.4 is the current controller build. The earlier 0.1 and 0.2 builds
+Version 0.3.5 is the current controller build. The earlier 0.1 and 0.2 builds
 proved that Android can hold the io24 vendor-control interface while another
 app records and plays USB audio. This version keeps that transport and adds the
 five-screen control surface.
@@ -56,7 +56,7 @@ The current build has three different kinds of evidence:
 | --- | --- |
 | Android USB control plus USB audio | Physically proved on the BLU 1660V with the earlier transport build |
 | Input 2 mute native write | Physically applied; the original short-reply bug was isolated |
-| Ordered ACK drain and fresh state read | Unit and emulator tested in 0.3.4; needs a new physical run |
+| Ordered ACK drain and fresh state read | Unit tested in 0.3.5 and emulator tested in 0.3.4; needs a new physical run |
 | Mixer, Fat Channel, Voice FX, native reverb, channel 2, and native preset-block builders | Exact offline vectors and protocol tests pass; not yet sent by this APK to the physical io24 |
 | Five-screen UI, scenes, error recovery, and high-rate guard | Exercised on the 720x1600 Android 15 emulator |
 | Audible Android-hosted DSP | Not implemented and not claimed |
@@ -81,10 +81,11 @@ Saving a front-panel block writes the Fat Channel currently shown on the
 phone. If Voice FX is assigned to that input, the decoded native block body can
 also carry Transformer. Active Delay is deliberately kept in a phone scene or
 Linux Host setup instead of a device block, even at a lower rate, so loading it
-can choose a safe execution path for the rate that is actually in use. The
-currently playing block cannot be overwritten. Because the io24 cannot return
-a stored body, completion is reported as `WRITE_SENT_UNVERIFIED`, not readback
-or power-cycle proof.
+can choose a safe execution path for the rate that is actually in use. Either
+block can be replaced on either input after confirmation, including the block
+currently selected for front-panel use. Because the io24 cannot return a stored
+body, completion is reported as `WRITE_SENT_UNVERIFIED`, not readback or
+power-cycle proof.
 
 The block button selects which block the front panel uses. It does not make the
 firmware reapply that block's stored body. Whole-setup scene loading likewise
@@ -129,7 +130,7 @@ safety message.
 - De-Tuner, Vocoder, Ring Modulator, and Filters do not yet have decoded native
   front-panel block bodies. The app refuses to silently omit an active one.
 - Multiband compression, auto-leveling, and audible high-rate Delay would require a
-  phone-side audio engine. That engine is not in 0.3.4. The Android **Device
+  phone-side audio engine. That engine is not in 0.3.5. The Android **Device
   reverb** rack controls the io24's native block 202.
 
 ## Build and verify

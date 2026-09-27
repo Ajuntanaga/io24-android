@@ -268,6 +268,7 @@ def test_android_preset_ui_maps_two_blocks_per_input_and_names_scene_scope():
     assert '"Save current input to this block"' in presets
     assert "Io24Command.saveDeviceBlock(channel, block)" in presets
     assert "WRITE_SENT_UNVERIFIED" in presets
+    assert "That block is playing now" not in presets
     assert "Native preset body is too large" in native
     assert "Delay cannot be stored active in a device block" in native
     assert '"Select block for front-panel use"' in presets

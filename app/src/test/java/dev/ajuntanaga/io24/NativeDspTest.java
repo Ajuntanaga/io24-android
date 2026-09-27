@@ -4,6 +4,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.List;
@@ -45,7 +47,7 @@ public final class NativeDspTest {
 
     @Test
     public void sharedReverbMatchesTheProvenBlock202Vector() throws Exception {
-        assertDigest("e0b111444e68e7d65974df2cc8a90b0726bf589ef524e9e3d0c9b3f29707c0cc",
+        assertDigest("445eaee021a4e7a167926176188ccee1f7840f8931e956081d8647c25d0c8fc6",
                 NativeDsp.reverb(Io24State.defaults().reverb(), 48_000));
     }
 
@@ -63,29 +65,46 @@ public final class NativeDspTest {
 
     @Test
     public void everySharedReverbControlChangesItsNativeBlock202Record() {
-        byte[] baseline = NativeDsp.reverb(
-                Io24State.defaults().reverb(), 48_000);
+        byte[] baseline = NativeDsp.reverb(Io24State.defaults().buildUpon()
+                .setReverb(true, 0.5f, 0.3f, 200.0f, 0.02f)
+                .build().reverb(), 48_000);
         Io24State.ReverbState[] edits = {
                 Io24State.defaults().buildUpon()
-                        .setReverb(true, 0.5f, 0.3f, 200.0f, 0.02f)
+                        .setReverb(false, 0.5f, 0.3f, 200.0f, 0.02f)
                         .build().reverb(),
                 Io24State.defaults().buildUpon()
-                        .setReverb(false, 0.8f, 0.3f, 200.0f, 0.02f)
+                        .setReverb(true, 0.8f, 0.3f, 200.0f, 0.02f)
                         .build().reverb(),
                 Io24State.defaults().buildUpon()
-                        .setReverb(false, 0.5f, 0.7f, 200.0f, 0.02f)
+                        .setReverb(true, 0.5f, 0.7f, 200.0f, 0.02f)
                         .build().reverb(),
                 Io24State.defaults().buildUpon()
-                        .setReverb(false, 0.5f, 0.3f, 320.0f, 0.02f)
+                        .setReverb(true, 0.5f, 0.3f, 320.0f, 0.02f)
                         .build().reverb(),
                 Io24State.defaults().buildUpon()
-                        .setReverb(false, 0.5f, 0.3f, 200.0f, 0.06f)
+                        .setReverb(true, 0.5f, 0.3f, 200.0f, 0.06f)
                         .build().reverb(),
         };
         for (Io24State.ReverbState edit : edits) {
             assertFalse(Arrays.equals(
                     baseline, NativeDsp.reverb(edit, 48_000)));
         }
+    }
+
+    @Test
+    public void sharedReverbOffZerosWireWetButKeepsTheSemanticMix() {
+        Io24State.ReverbState off = Io24State.defaults().buildUpon()
+                .setReverb(false, 0.5f, 0.73f, 200.0f, 0.02f)
+                .build().reverb();
+        Io24State.ReverbState on = Io24State.defaults().buildUpon()
+                .setReverb(true, 0.5f, 0.73f, 200.0f, 0.02f)
+                .build().reverb();
+
+        assertEquals(0.73f, off.mix(), 0.0f);
+        assertEquals(0.0f,
+                littleEndianFloat(NativeDsp.reverb(off, 48_000), 16), 0.0f);
+        assertEquals(0.73f,
+                littleEndianFloat(NativeDsp.reverb(on, 48_000), 16), 0.0f);
     }
 
     @Test
@@ -148,6 +167,12 @@ public final class NativeDspTest {
             result.append(String.format("%02x", item & 0xff));
         }
         return result.toString();
+    }
+
+    private static float littleEndianFloat(byte[] value, int offset) {
+        return ByteBuffer.wrap(value)
+                .order(ByteOrder.LITTLE_ENDIAN)
+                .getFloat(offset);
     }
 
 }

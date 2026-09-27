@@ -251,7 +251,11 @@ final class NativeDsp {
                 : IDENTITY;
         ByteBuffer result = blob(TAG_VRVB, 0x38, 0);
         result.putInt(state.on() ? 1 : 0);
-        result.putFloat(clamp01(state.mix()));
+        // The firmware's On word alone does not reliably silence the shared
+        // return. Match the physically verified Host path by also sending a
+        // zero wet return while Off. Io24State still retains the user's mix
+        // value, so turning the reverb back on restores it.
+        result.putFloat(state.on() ? clamp01(state.mix()) : 0.0f);
         result.putInt(preDelay > 0.0001f ? 1 : 0);
         result.putFloat(preDelay);
         result.putFloat(clamp01(state.size()));

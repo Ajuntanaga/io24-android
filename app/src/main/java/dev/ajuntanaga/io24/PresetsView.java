@@ -298,12 +298,6 @@ final class PresetsView implements ControllerView {
     private void saveDeviceBlock(Context context) {
         int channel = slotInput.getSelectedItemPosition() + 1;
         int block = slot.getSelectedItemPosition();
-        int absoluteSlot = deviceSlotIndex(channel, block);
-        if (state.input(channel).presetSlot() == absoluteSlot) {
-            deviceStatus.setText(
-                    "That block is playing now. Choose the other block before replacing it.");
-            return;
-        }
         Io24State.VoiceFxModel model = state.selectedVoiceFx();
         Io24State.VoiceFxState effect = state.voiceFx(model);
         if (state.voiceFxInput() == channel && effect.on()

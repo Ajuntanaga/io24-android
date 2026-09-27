@@ -1,6 +1,6 @@
 # Android physical test record
 
-The current 0.3.4 controller has not yet sent its expanded control surface or
+The current 0.3.5 controller has not yet sent its expanded control surface or
 native preset-block writer to a
 physical io24. The physical results below are the proven foundation from the
 earlier transport builds.
@@ -48,9 +48,9 @@ so audible mute is not claimed.
 The matching Unmute attempt produced the same old verifier error. Its final
 physical state was not read back in that run.
 
-## 0.3.4 boundary
+## 0.3.5 boundary
 
-Version 0.3.4 drains and validates each optional short write reply before any
+Version 0.3.5 drains and validates each optional short write reply before any
 fresh state request. It also adds the full typed mixer, Fat Channel, Voice FX,
 native reverb, scene, settings, and exact front-panel block architecture. The
 native block body is byte-matched to the Linux encoder, but neither that send

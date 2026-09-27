@@ -68,7 +68,9 @@ to one active model. Turning one model on clears every other model's On value
 without clearing its parameters. Only the selected model is materialized on
 the device.
 
-The shared device reverb is native block 202.
+The shared device reverb is native block 202. Off writes both its native Off
+word and a zero wet return; the semantic scene state retains the chosen wet
+level for the next On action.
 
 Alternative UC compressor and EQ models are deliberately not synthesized on
 Android. Their exact design depends on retained Universal Control desktop code.
@@ -99,8 +101,8 @@ Storage Access Framework, so broad storage permission is unnecessary.
 Scene restore runs through the same typed validation and serialized controller
 as manual edits. Placement is recalculated from the current confirmed rate.
 Scenes do not change that rate or select a front-panel block. Front-panel blocks
-remain separate. Version 0.3.4 can select either of the two blocks per input or
-replace an inactive one with a complete firmware-native `MemP/Stat` body. The
+remain separate. Version 0.3.5 can select or replace either of the two blocks
+per input with a complete firmware-native `MemP/Stat` body. The
 block selector changes the front-panel choice; firmware does not reapply the
 stored body on selection. The builder is byte-matched to the Linux encoder.
 Transport completion is still `WRITE_SENT_UNVERIFIED` because the body cannot

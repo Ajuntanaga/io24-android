@@ -1,6 +1,6 @@
 # Android controller implementation record
 
-Version 0.3.4 is feature-complete for the offline and emulator milestone. The
+Version 0.3.5 is feature-complete for the offline and emulator milestone. The
 remaining work is a separately controlled physical acceptance run, not more UI
 scaffolding.
 
@@ -44,7 +44,7 @@ scaffolding.
 
 ## Physical acceptance still required
 
-- [ ] Install the checksum-recorded 0.3.4 APK on the BLU 1660V.
+- [ ] Install the checksum-recorded 0.3.5 APK on the BLU 1660V.
 - [ ] Reconfirm control plus Android audio coexistence.
 - [ ] Verify the corrected Input 2 mute ACK/readback sequence.
 - [ ] Exercise one safe representative from each native family at 48 kHz:
