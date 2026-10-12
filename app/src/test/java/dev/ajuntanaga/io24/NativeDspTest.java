@@ -1,5 +1,6 @@
 package dev.ajuntanaga.io24;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
@@ -146,6 +147,50 @@ public final class NativeDspTest {
                 NativeDsp.limiter(state.processing(1), 48_000).get(0));
         assertDigest("60e5324fb50f944e20abac1e0172164f493b08f100d6cddcaa5516a809828f78",
                 NativeDsp.highPassFilter(true, 80, 48_000));
+        assertArrayEquals(
+                NativeDsp.highPassFilter(false, 80, 48_000),
+                NativeDsp.highPassFilter(true, 24, 48_000));
+    }
+
+    @Test
+    public void standardEqHonorsBandPowerQAndOuterBandMode() {
+        Io24State.Builder builder = Io24State.defaults().buildUpon()
+                .setProcessingParameter(1, "eq_on", 1)
+                .setProcessingParameter(1, "eq_low_gain", 5)
+                .setProcessingParameter(1, "eq_lowmid_gain", -4)
+                .setProcessingParameter(1, "eq_himid_gain", 3)
+                .setProcessingParameter(1, "eq_high_gain", 6);
+        Io24State baselineState = builder.build();
+        List<byte[]> baseline = NativeDsp.standardEq(
+                baselineState.processing(1), 48_000);
+
+        Io24State qEdit = baselineState.buildUpon()
+                .setProcessingParameter(1, "eq_lowmid_q", 2.4f)
+                .build();
+        List<byte[]> qChanged = NativeDsp.standardEq(qEdit.processing(1), 48_000);
+        assertFalse(Arrays.equals(baseline.get(1), qChanged.get(1)));
+        assertEquals(true, Arrays.equals(baseline.get(0), qChanged.get(0)));
+        assertEquals(true, Arrays.equals(baseline.get(2), qChanged.get(2)));
+        assertEquals(true, Arrays.equals(baseline.get(3), qChanged.get(3)));
+
+        Io24State modeEdit = baselineState.buildUpon()
+                .setProcessingParameter(1, "eq_low_shelf", 0)
+                .build();
+        List<byte[]> modeChanged = NativeDsp.standardEq(
+                modeEdit.processing(1), 48_000);
+        assertFalse(Arrays.equals(baseline.get(0), modeChanged.get(0)));
+
+        Io24State powerEdit = baselineState.buildUpon()
+                .setProcessingParameter(1, "eq_high_on", 0)
+                .build();
+        List<byte[]> powerChanged = NativeDsp.standardEq(
+                powerEdit.processing(1), 48_000);
+        assertFalse(Arrays.equals(baseline.get(3), powerChanged.get(3)));
+        assertEquals(1.0f, littleEndianFloat(powerChanged.get(3), 16), 0.0f);
+        assertEquals(0.0f, littleEndianFloat(powerChanged.get(3), 20), 0.0f);
+        assertEquals(0.0f, littleEndianFloat(powerChanged.get(3), 24), 0.0f);
+        assertEquals(0.0f, littleEndianFloat(powerChanged.get(3), 28), 0.0f);
+        assertEquals(0.0f, littleEndianFloat(powerChanged.get(3), 32), 0.0f);
     }
 
     private static List<byte[]> materialized(

@@ -265,9 +265,9 @@ final class NativeDsp {
     }
 
     static byte[] highPassFilter(boolean on, float frequency, int sampleRateHz) {
-        float[] coefficients = on
-                ? highPassRbj(Math.max(24, Math.min(1000, frequency)),
-                        sampleRateHz, 0.70710678f)
+        float cutoff = Math.max(24, Math.min(1000, frequency));
+        float[] coefficients = on && cutoff > 24.001f
+                ? highPassRbj(cutoff, sampleRateHz, 0.70710678f)
                 : IDENTITY;
         return biquadBlob(0, coefficients);
     }
@@ -392,32 +392,58 @@ final class NativeDsp {
     }
 
     static List<byte[]> standardEq(Map<String, Float> values, int sampleRateHz) {
-        boolean on = bool(values, "eq_on", false);
         String[] names = {"low", "lowmid", "himid", "high"};
-        float[] defaults = {80, 400, 2500, 10000};
+        float[] defaults = {130, 320, 1400, 5000};
+        boolean allOn = bool(values, "eq_on", false);
         List<byte[]> result = new ArrayList<>();
         for (int band = 0; band < names.length; band++) {
-            float[] coefficients;
-            if (!on) {
-                coefficients = IDENTITY;
-            } else {
-                float frequency = value(
-                        values, "eq_" + names[band] + "_freq", defaults[band]);
-                float gain = value(values, "eq_" + names[band] + "_gain", 0);
-                if (band == 0) {
-                    coefficients = lowShelfStandard(
-                            frequency, gain, sampleRateHz, 0.6f);
-                } else if (band == 3) {
-                    coefficients = highShelfStandard(
-                            frequency, gain, sampleRateHz, 0.6f);
-                } else {
-                    coefficients = peakingStandard(
-                            frequency, gain, sampleRateHz, 0.6f);
-                }
-            }
+            String prefix = "eq_" + names[band] + "_";
+            float frequency = value(values, prefix + "freq", defaults[band]);
+            float gain = value(values, prefix + "gain", 0);
+            float q = value(values, prefix + "q", 0.6f);
+            boolean bandOn = bool(values, prefix + "on", true);
+            boolean shelf = (band == 0 || band == 3)
+                    && bool(values, prefix + "shelf", true);
+            float[] coefficients = standardEqBandCoefficients(
+                    band, frequency, gain, q, allOn && bandOn,
+                    shelf, sampleRateHz);
             result.add(biquadBlob(band, coefficients));
         }
         return result;
+    }
+
+    /** Exact Standard-EQ designer path shared by wire records and UI response. */
+    static float[] standardEqBandCoefficients(
+            int band,
+            float frequency,
+            float gainDb,
+            float q,
+            boolean on,
+            boolean shelf,
+            int sampleRateHz) {
+        if (band < 0 || band > 3) {
+            throw new IllegalArgumentException("Standard EQ band must be 0..3");
+        }
+        if (sampleRateHz <= 0) {
+            throw new IllegalArgumentException("Sample rate must be positive");
+        }
+        if (!on) {
+            return IDENTITY.clone();
+        }
+        float safeFrequency = Math.max(36.0f, Math.min(
+                Math.min(18_000.0f, sampleRateHz * 0.45f), frequency));
+        float safeGain = Math.max(-15.0f, Math.min(15.0f, gainDb));
+        float safeQ = Math.max(0.1f, Math.min(10.0f, q));
+        if (shelf && band == 0) {
+            return lowShelfStandard(
+                    safeFrequency, safeGain, sampleRateHz, safeQ);
+        }
+        if (shelf && band == 3) {
+            return highShelfStandard(
+                    safeFrequency, safeGain, sampleRateHz, safeQ);
+        }
+        return peakingStandard(
+                safeFrequency, safeGain, sampleRateHz, safeQ);
     }
 
     static byte[] biquadBlob(int band, float[] coefficients) {

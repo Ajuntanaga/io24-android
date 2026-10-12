@@ -7,6 +7,14 @@
 - Updated the pinned build toolchain to Gradle 9.7.1 and Android Gradle Plugin
   9.4.1, with a regression test that keeps every version reference aligned.
 
+## 0.3.6 - 2026-10-12
+
+- Added the complete four-band Standard EQ editor and response graph.
+- Unified Mixer and Fat Channel HPF power, retained cutoff across power cycles,
+  and ordered scene cutoff writes before HPF power changes.
+- Made graph frequency/gain edits one recoverable controller batch and made
+  private scene replacement atomic.
+
 ## 0.3.5 - 2026-09-27
 
 - Made either front-panel block writable on either input after the existing

@@ -9,6 +9,7 @@ import android.view.View;
 /** Shared restrained rack-display renderer. */
 abstract class TraceView extends View {
     private final Paint background = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint frame = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint grid = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint tracePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path path = new Path();
@@ -17,11 +18,18 @@ abstract class TraceView extends View {
     TraceView(Context context) {
         super(context);
         background.setColor(context.getColor(R.color.surface_0));
+        frame.setColor(context.getColor(R.color.display_edge));
+        frame.setStyle(Paint.Style.STROKE);
+        frame.setStrokeWidth(Ui.dp(context, 1));
         grid.setColor(context.getColor(R.color.line));
         grid.setStrokeWidth(Ui.dp(context, 1));
         tracePaint.setColor(context.getColor(R.color.accent));
         tracePaint.setStrokeWidth(Ui.dp(context, 2));
         tracePaint.setStyle(Paint.Style.STROKE);
+        tracePaint.setShadowLayer(
+                Ui.dp(context, 4), 0, 0,
+                context.getColor(R.color.accent_glow));
+        setLayerType(LAYER_TYPE_SOFTWARE, null);
         setMinimumHeight(Ui.dp(context, 120));
     }
 
@@ -45,6 +53,10 @@ abstract class TraceView extends View {
         canvas.drawRoundRect(
                 0, 0, getWidth(), getHeight(),
                 Ui.dp(getContext(), 8), Ui.dp(getContext(), 8), background);
+        float inset = Ui.dp(getContext(), 1) / 2.0f;
+        canvas.drawRoundRect(
+                inset, inset, getWidth() - inset, getHeight() - inset,
+                Ui.dp(getContext(), 8), Ui.dp(getContext(), 8), frame);
         for (int division = 1; division < 4; division++) {
             float x = getWidth() * division / 4.0f;
             float y = getHeight() * division / 4.0f;

@@ -357,7 +357,7 @@ public final class Io24Protocol {
                     NativeDsp.BLOCK_FILTER,
                     blockIndex,
                     NativeDsp.highPassFilter(
-                            values.bool("hpf_on", false),
+                            true,
                             values.value("hpf_hz", 80),
                             state.sampleRateHz()),
                     0,

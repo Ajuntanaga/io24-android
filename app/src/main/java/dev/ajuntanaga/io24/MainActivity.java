@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ApplicationInfo;
+import android.content.res.Configuration;
 import android.graphics.Insets;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
@@ -148,6 +149,16 @@ public final class MainActivity extends Activity {
     }
 
     @Override
+    public void onConfigurationChanged(Configuration configuration) {
+        super.onConfigurationChanged(configuration);
+        screens.clear();
+        navigation.clear();
+        setContentView(buildShell());
+        showDestination(destination);
+        render(visibleState);
+    }
+
+    @Override
     protected void onDestroy() {
         unregisterReceiver(usbReceiver);
         controller.close();
@@ -158,6 +169,8 @@ public final class MainActivity extends Activity {
     }
 
     private View buildShell() {
+        boolean compactLandscape = getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
         LinearLayout root = Ui.column(this);
         root.setBackgroundColor(getColor(R.color.surface_0));
         root.setOnApplyWindowInsetsListener((view, windowInsets) -> {
@@ -184,8 +197,10 @@ public final class MainActivity extends Activity {
         });
 
         LinearLayout banner = Ui.column(this);
-        banner.setPadding(Ui.dp(this, 16), Ui.dp(this, 12),
-                Ui.dp(this, 16), Ui.dp(this, 12));
+        banner.setPadding(Ui.dp(this, 16),
+                Ui.dp(this, compactLandscape ? 6 : 12),
+                Ui.dp(this, 16),
+                Ui.dp(this, compactLandscape ? 6 : 12));
         banner.setBackgroundColor(getColor(R.color.surface_1));
         LinearLayout heading = Ui.row(this);
         heading.addView(Ui.title(this, getString(R.string.app_name)), Ui.weight(2));
@@ -193,13 +208,10 @@ public final class MainActivity extends Activity {
         connectionStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         connectionStatus.setGravity(android.view.Gravity.END);
         heading.addView(connectionStatus, Ui.weight(1));
-        banner.addView(heading, Ui.match());
-
         connectionDetail = Ui.caption(
                 this, getString(R.string.status_connect_device));
         connectionDetail.setAccessibilityLiveRegion(
                 View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        banner.addView(connectionDetail, Ui.spaced(this));
 
         LinearLayout actions = Ui.row(this);
         connect = Ui.button(this, "Connect");
@@ -216,10 +228,35 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams disconnectParams = Ui.weight(1);
         disconnectParams.leftMargin = Ui.dp(this, 8);
         actions.addView(disconnect, disconnectParams);
-        banner.addView(actions, Ui.spaced(this));
+        if (compactLandscape) {
+            LinearLayout identity = Ui.column(this);
+            identity.addView(heading, Ui.match());
+            identity.addView(connectionDetail, Ui.spaced(this));
+
+            LinearLayout compactBanner = Ui.row(this);
+            compactBanner.addView(identity, Ui.weight(1));
+            LinearLayout.LayoutParams actionParams = Ui.weight(1);
+            actionParams.leftMargin = Ui.dp(this, 16);
+            compactBanner.addView(actions, actionParams);
+            banner.addView(compactBanner, Ui.match());
+        } else {
+            banner.addView(heading, Ui.match());
+            banner.addView(connectionDetail, Ui.spaced(this));
+            banner.addView(actions, Ui.spaced(this));
+        }
         root.addView(banner, Ui.match());
 
-        CommandSink sink = command -> controller.dispatch(command);
+        CommandSink sink = new CommandSink() {
+            @Override
+            public void dispatch(Io24Command command) {
+                controller.dispatch(command);
+            }
+
+            @Override
+            public void dispatchAll(List<Io24Command> commands, String label) {
+                controller.dispatchAll(commands, label);
+            }
+        };
         screens.put(Destination.MIXER, new MixerView(this, sink));
         screens.put(Destination.FAT_CHANNEL, new FatChannelView(this, sink));
         screens.put(Destination.EFFECTS, new EffectsView(this, sink));
@@ -263,7 +300,7 @@ public final class MainActivity extends Activity {
             navigation.put(item, button);
             LinearLayout.LayoutParams params = Ui.weight(1);
             if (item != Destination.MIXER) {
-                params.leftMargin = Ui.dp(this, 4);
+                params.leftMargin = Ui.dp(this, 6);
             }
             nav.addView(button, params);
         }

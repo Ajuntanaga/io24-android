@@ -101,7 +101,7 @@ Storage Access Framework, so broad storage permission is unnecessary.
 Scene restore runs through the same typed validation and serialized controller
 as manual edits. Placement is recalculated from the current confirmed rate.
 Scenes do not change that rate or select a front-panel block. Front-panel blocks
-remain separate. Version 0.3.5 can select or replace either of the two blocks
+remain separate. Version 0.3.6 can select or replace either of the two blocks
 per input with a complete firmware-native `MemP/Stat` body. The
 block selector changes the front-panel choice; firmware does not reapply the
 stored body on selection. The builder is byte-matched to the Linux encoder.

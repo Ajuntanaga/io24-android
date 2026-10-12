@@ -15,6 +15,10 @@ final class Io24ScenePlanner {
             Io24State.Input input = target.input(channel);
             result.add(Io24Command.setGain(channel, input.gainDb()));
             result.add(Io24Command.setPhantom(channel, input.phantom()));
+            result.add(Io24Command.setProcessingParameter(
+                    channel,
+                    "hpf_hz",
+                    value(target.processing(channel), "hpf_hz", 80)));
             result.add(Io24Command.setHighPass(channel, input.highPass()));
             result.add(Io24Command.setInputMute(channel, input.muted()));
             result.add(Io24Command.setFxMix(channel, input.fxMix()));
@@ -24,6 +28,8 @@ final class Io24ScenePlanner {
             for (Map.Entry<String, Float> entry
                     : target.processing(channel).entrySet()) {
                 if (!entry.getKey().equals("preset_enabled")
+                        && !entry.getKey().equals("hpf_on")
+                        && !entry.getKey().equals("hpf_hz")
                         && !entry.getKey().equals("source_input")
                         && !entry.getKey().equals("main_hardware_muted")
                         && !entry.getKey().equals("mute_sync")

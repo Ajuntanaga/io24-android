@@ -598,6 +598,8 @@ public final class Io24State {
         }
 
         public Builder setInputHighPass(int channel, boolean on) {
+            requireChannel(channel);
+            processing[channel - 1].put("hpf_on", on ? 1.0f : 0.0f);
             return replaceInput(channel, null, null, on, null, null, null, null);
         }
 
@@ -741,6 +743,11 @@ public final class Io24State {
                 throw new IllegalArgumentException("Processing parameter is required");
             }
             processing[channel - 1].put(name, value);
+            if ("hpf_on".equals(name)) {
+                replaceInput(
+                        channel, null, null, value >= 0.5f,
+                        null, null, null, null);
+            }
             return this;
         }
 
@@ -836,14 +843,24 @@ public final class Io24State {
             parameters.put("limiter_threshold", -1.0f);
             parameters.put("eq_model", 0.0f);
             parameters.put("eq_on", 0.0f);
-            parameters.put("eq_low_freq", 80.0f);
+            parameters.put("eq_low_on", 1.0f);
+            parameters.put("eq_low_shelf", 1.0f);
+            parameters.put("eq_low_freq", 130.0f);
             parameters.put("eq_low_gain", 0.0f);
-            parameters.put("eq_lowmid_freq", 400.0f);
+            parameters.put("eq_low_q", 0.6f);
+            parameters.put("eq_lowmid_on", 1.0f);
+            parameters.put("eq_lowmid_freq", 320.0f);
             parameters.put("eq_lowmid_gain", 0.0f);
-            parameters.put("eq_himid_freq", 2500.0f);
+            parameters.put("eq_lowmid_q", 0.6f);
+            parameters.put("eq_himid_on", 1.0f);
+            parameters.put("eq_himid_freq", 1400.0f);
             parameters.put("eq_himid_gain", 0.0f);
-            parameters.put("eq_high_freq", 10000.0f);
+            parameters.put("eq_himid_q", 0.6f);
+            parameters.put("eq_high_on", 1.0f);
+            parameters.put("eq_high_shelf", 1.0f);
+            parameters.put("eq_high_freq", 5000.0f);
             parameters.put("eq_high_gain", 0.0f);
+            parameters.put("eq_high_q", 0.6f);
             parameters.put("eq_first", 0.0f);
         }
     }

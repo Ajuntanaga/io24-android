@@ -61,6 +61,9 @@ public final class PresetCodec {
         for (int channel = 1; channel <= 2; channel++) {
             for (Map.Entry<String, Float> entry
                     : state.processing(channel).entrySet()) {
+                if (entry.getKey().equals("hpf_on")) {
+                    continue;
+                }
                 values.put("processing." + channel + "." + entry.getKey(),
                         entry.getValue());
             }

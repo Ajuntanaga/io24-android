@@ -1,6 +1,6 @@
 # Android physical test record
 
-The current 0.3.5 controller has not yet sent its expanded control surface or
+The current 0.3.6 controller has not yet sent its expanded control surface or
 native preset-block writer to a
 physical io24. The physical results below are the proven foundation from the
 earlier transport builds.

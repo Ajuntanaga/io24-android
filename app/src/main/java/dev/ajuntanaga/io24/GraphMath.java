@@ -86,29 +86,100 @@ public final class GraphMath {
             float[] gainsDb,
             int width,
             int height) {
-        if (frequencies == null
-                || gainsDb == null
-                || frequencies.length != gainsDb.length
-                || frequencies.length == 0
-                || width <= 0
-                || height <= 0) {
-            throw new IllegalArgumentException("Matching EQ bands and dimensions are required");
+        return eqCurve(
+                frequencies,
+                gainsDb,
+                new float[] {0.6f, 0.6f, 0.6f, 0.6f},
+                new boolean[] {true, true, true, true},
+                new boolean[] {true, false, false, true},
+                48_000,
+                width,
+                height);
+    }
+
+    /** Render the actual cascaded four-band Standard-EQ biquad response. */
+    public static float[] eqCurve(
+            float[] frequencies,
+            float[] gainsDb,
+            float[] q,
+            boolean[] on,
+            boolean[] shelf,
+            int sampleRateHz,
+            int width,
+            int height) {
+        requireStandardEqArrays(frequencies, gainsDb, q, on, shelf);
+        if (sampleRateHz <= 0 || width <= 0 || height <= 0) {
+            throw new IllegalArgumentException(
+                    "Positive sample rate and EQ dimensions are required");
+        }
+        float[][] coefficients = new float[4][];
+        for (int band = 0; band < 4; band++) {
+            coefficients[band] = NativeDsp.standardEqBandCoefficients(
+                    band,
+                    frequencies[band],
+                    gainsDb[band],
+                    q[band],
+                    on[band],
+                    shelf[band],
+                    sampleRateHz);
         }
         float[] trace = new float[POINTS];
         double lowLog = Math.log(20.0);
         double rangeLog = Math.log(20_000.0) - lowLog;
         for (int index = 0; index < POINTS; index++) {
-            double logFrequency = lowLog + rangeLog * index / (POINTS - 1.0);
-            double response = 0.0;
-            for (int band = 0; band < frequencies.length; band++) {
-                double center = Math.log(Math.max(20.0, frequencies[band]));
-                double distance = (logFrequency - center) / 0.72;
-                response += gainsDb[band] * Math.exp(-distance * distance);
+            double frequency = Math.exp(
+                    lowLog + rangeLog * index / (POINTS - 1.0));
+            double responseDb = 0.0;
+            for (float[] band : coefficients) {
+                responseDb += biquadMagnitudeDb(
+                        band, frequency, sampleRateHz);
             }
-            double normalized = 0.5 - response / 30.0;
-            trace[index] = clamp((float) (normalized * height), 2.0f, height - 2.0f);
+            double normalized = 0.5 - responseDb / 60.0;
+            trace[index] = clamp(
+                    (float) (normalized * height), 2.0f, height - 2.0f);
         }
         return trace;
+    }
+
+    private static void requireStandardEqArrays(
+            float[] frequencies,
+            float[] gainsDb,
+            float[] q,
+            boolean[] on,
+            boolean[] shelf) {
+        if (frequencies == null || gainsDb == null || q == null
+                || on == null || shelf == null
+                || frequencies.length != 4 || gainsDb.length != 4
+                || q.length != 4 || on.length != 4 || shelf.length != 4) {
+            throw new IllegalArgumentException(
+                    "Standard EQ requires four complete bands");
+        }
+    }
+
+    private static double biquadMagnitudeDb(
+            float[] coefficients,
+            double frequency,
+            int sampleRateHz) {
+        double angle = 2.0 * Math.PI * frequency / sampleRateHz;
+        double cos1 = Math.cos(angle);
+        double sin1 = Math.sin(angle);
+        double cos2 = Math.cos(angle * 2.0);
+        double sin2 = Math.sin(angle * 2.0);
+        double numeratorReal = coefficients[0]
+                + coefficients[2] * cos1 + coefficients[4] * cos2;
+        double numeratorImaginary = -coefficients[2] * sin1
+                - coefficients[4] * sin2;
+        double denominatorReal = 1.0
+                - coefficients[1] * cos1 - coefficients[3] * cos2;
+        double denominatorImaginary = coefficients[1] * sin1
+                + coefficients[3] * sin2;
+        double numeratorPower = numeratorReal * numeratorReal
+                + numeratorImaginary * numeratorImaginary;
+        double denominatorPower = denominatorReal * denominatorReal
+                + denominatorImaginary * denominatorImaginary;
+        double magnitude = Math.sqrt(Math.max(1.0e-20, numeratorPower)
+                / Math.max(1.0e-20, denominatorPower));
+        return 20.0 * Math.log10(Math.max(1.0e-10, magnitude));
     }
 
     private static double transformer(Map<String, Float> p, double x) {

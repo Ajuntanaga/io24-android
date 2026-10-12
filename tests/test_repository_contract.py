@@ -53,6 +53,13 @@ def test_toolchain_lock_matches_every_executable_reference():
     ).read_text()
 
 
+def test_current_apk_identity_is_036():
+    gradle = (ROOT / "app/build.gradle.kts").read_text()
+
+    assert "versionCode = 11" in gradle
+    assert 'versionName = "0.3.6"' in gradle
+
+
 def test_public_manifest_is_unique_complete_and_bounded():
     paths = _public_paths()
 

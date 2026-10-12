@@ -1,21 +1,21 @@
 # Android controller build report
 
-Clean offline build completed on 2026-09-27.
+Clean offline build completed on 2026-10-12.
 
 ## Artifact
 
 - APK: `app/build/outputs/apk/debug/app-debug.apk`
-- SHA-256: `e3760b88c4526a1c515f49c046c026d46db9719b7da94780acc284be61e27533`
-- Size: 1,002,411 bytes
+- SHA-256: `f497ae5b1594b3bc88115da5089e523972cad772963f0bb1c7b2d9912cdd8a46`
+- Size: 1,007,871 bytes
 - Package: `dev.ajuntanaga.io24`
-- Version: `0.3.5` (`versionCode` 10)
+- Version: `0.3.6` (`versionCode` 11)
 - Android: API 23 minimum, API 35 target
 - Signing: Android debug certificate; v1 and v2 signatures verified
 
 ## Automated verification
 
-- Standalone source, protocol, toolchain, and publication contracts: 22 passed
-- Java unit tests: 68 passed, 0 failed, 0 skipped
+- Standalone source, protocol, toolchain, and publication contracts: 25 passed
+- Java unit tests: 74 passed, 0 failed, 0 skipped
 - Android lint: no issues found
 - Clean debug APK assembly: passed
 - Toolchain: Gradle 9.7.1, Android Gradle Plugin 9.4.1, Temurin 17
@@ -35,19 +35,26 @@ confirmation, and the
 rate leaves a selected Delay explicitly off until the user enables it again.
 Scenes cannot confirm a remembered rate or move a front-panel block, and active
 Delay is refused in every device-resident block. The flat and fully edited
-Standard native records match the Linux builder byte for byte.
+Standard native records match the Linux builder byte for byte. HPF power is one
+shared channel state across Mixer, Fat Channel, scenes, and native presets.
+Cutoff edits program the selected coefficients even while that shared power is
+off, and power cycling retains the cutoff.
 
 The controller tests also prove that Disconnect publishes immediately while
 USB release drains on the serial worker, queued writes are discarded after a
 disconnect, and an interrupted scene reports its confirmed progress plus the
 possibility of a partially changed device.
 
-## Prior emulator acceptance
+## Emulator acceptance
 
-The 0.3.4 APK was inspected at 720x1600 and 320 dpi on Android 15. Version
-0.3.5 does not change the layout. That prior run verified:
+The current 0.3.6 candidate was inspected at 720x1600 and 320 dpi on Android
+15. The run verified:
 
 - Mixer, Fat Channel, Effects, Presets, and Device navigation and layout;
+- the shared Mixer/Fat Channel HPF power state and retained 406 Hz cutoff after
+  an Off/On cycle;
+- a Standard EQ graph drag applying frequency and gain as one recoverable batch
+  while remaining connected;
 - system-bar insets and unobstructed bottom navigation;
 - small, fine-grained Effects scrolling and access to shared device reverb;
 - parameter-driven Voice FX graphs and disabled unknown/high-rate Delay controls;
@@ -61,7 +68,7 @@ The 0.3.4 APK was inspected at 720x1600 and 320 dpi on Android 15. Version
 ## Proof boundary
 
 No physical phone installation, USB transfer, io24 command, firmware action,
-or audible test occurred during this 0.3.5 build. Earlier physical trials prove
+or audible test occurred during this 0.3.6 build. Earlier physical trials prove
 the direct Android transport and USB-audio coexistence, plus application of the
 Input 2 mute write. The expanded mixer, Fat Channel, Voice FX, reverb, scene,
 and high-rate paths are ready for, but not promoted beyond, the next physical

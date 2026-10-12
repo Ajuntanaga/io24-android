@@ -77,6 +77,33 @@ public final class Io24StateTest {
     }
 
     @Test
+    public void highPassPowerIsSharedAndPreservesItsCutoff() {
+        Io24State before = Io24State.defaults().buildUpon()
+                .setProcessingParameter(1, "hpf_hz", 347.0f)
+                .build();
+
+        Io24State enabled = Io24StateReducer.apply(
+                before, Io24Command.setHighPass(1, true));
+        Io24State disabled = Io24StateReducer.apply(
+                enabled, Io24Command.setHighPass(1, false));
+        Io24State restored = Io24StateReducer.apply(
+                disabled, Io24Command.setHighPass(1, true));
+
+        assertTrue(restored.input(1).highPass());
+        assertEquals(1.0f, restored.processing(1).get("hpf_on"), 0.0f);
+        assertEquals(347.0f, restored.processing(1).get("hpf_hz"), 0.0f);
+    }
+
+    @Test
+    public void legacyHighPassParameterCannotCreateASecondPowerState() {
+        Io24State state = Io24State.defaults().buildUpon()
+                .setProcessingParameter(2, "hpf_on", 1.0f)
+                .build();
+
+        assertTrue(state.input(2).highPass());
+    }
+
+    @Test
     public void mixerStateIsIndexedBySourceAndBus() {
         Io24State state = Io24State.defaults().buildUpon()
                 .setMixerSend(

@@ -13,21 +13,24 @@ making either controller depend on the other at runtime.
 Android phone -> USB-C -> Revelator io24
 ```
 
-Version 0.3.5 is the current controller build. The earlier 0.1 and 0.2 builds
+Version 0.3.6 is the current controller build. The earlier 0.1 and 0.2 builds
 proved that Android can hold the io24 vendor-control interface while another
 app records and plays USB audio. This version keeps that transport and adds the
 five-screen control surface.
 
 ## What is in the app
 
-- **Mixer:** both preamps, phantom power, fixed 80 Hz filters, input mute,
+- **Mixer:** both preamps, shared variable-cutoff high-pass filters, input mute,
   processing mix, input link, Main and headphone levels, monitor blend, and
   Main/Mix A/Mix B routing for both inputs, all three playback pairs, and the
   FX return. Bus mute, solo, assignment, trim, and one-shot **Copy Main** are
   included.
 - **Fat Channel:** variable HPF, gate/expander, Standard compressor, limiter,
-  four-band Standard EQ, processing order, and live response graphs for both
-  inputs.
+  processing order, and the complete four-band Standard EQ for both inputs.
+  Each EQ band keeps its own power, frequency, gain, and Q; the outer bands
+  switch between peak and shelf. The response graph uses the same native
+  coefficients sent to the io24, and its numbered nodes drag frequency and
+  gain directly.
 - **Effects:** the native Transformer, De-Tuner, Vocoder, Ring Modulator,
   Filters, and Delay racks in the established control order. Every model keeps
   its own parameter settings, while turning one model On turns the other five
@@ -56,7 +59,7 @@ The current build has three different kinds of evidence:
 | --- | --- |
 | Android USB control plus USB audio | Physically proved on the BLU 1660V with the earlier transport build |
 | Input 2 mute native write | Physically applied; the original short-reply bug was isolated |
-| Ordered ACK drain and fresh state read | Unit tested in 0.3.5 and emulator tested in 0.3.4; needs a new physical run |
+| Ordered ACK drain and fresh state read | Unit tested in 0.3.6 and emulator tested in 0.3.4; needs a new physical run |
 | Mixer, Fat Channel, Voice FX, native reverb, channel 2, and native preset-block builders | Exact offline vectors and protocol tests pass; not yet sent by this APK to the physical io24 |
 | Five-screen UI, scenes, error recovery, and high-rate guard | Exercised on the 720x1600 Android 15 emulator |
 | Audible Android-hosted DSP | Not implemented and not claimed |
@@ -130,7 +133,7 @@ safety message.
 - De-Tuner, Vocoder, Ring Modulator, and Filters do not yet have decoded native
   front-panel block bodies. The app refuses to silently omit an active one.
 - Multiband compression, auto-leveling, and audible high-rate Delay would require a
-  phone-side audio engine. That engine is not in 0.3.5. The Android **Device
+  phone-side audio engine. That engine is not in 0.3.6. The Android **Device
   reverb** rack controls the io24's native block 202.
 
 ## Build and verify

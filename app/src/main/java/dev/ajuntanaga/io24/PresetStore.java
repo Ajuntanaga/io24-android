@@ -1,6 +1,8 @@
 package dev.ajuntanaga.io24;
 
 import android.content.Context;
+import android.system.ErrnoException;
+import android.system.Os;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -30,11 +32,12 @@ final class PresetStore {
             output.write(data);
             output.getFD().sync();
         }
-        if (target.exists() && !target.delete()) {
-            throw new IOException("Could not replace existing scene");
-        }
-        if (!temporary.renameTo(target)) {
-            throw new IOException("Could not finish saving scene");
+        try {
+            // POSIX rename replaces the destination atomically, so the old
+            // scene remains intact until the fully synced temporary is ready.
+            Os.rename(temporary.getAbsolutePath(), target.getAbsolutePath());
+        } catch (ErrnoException error) {
+            throw new IOException("Could not atomically finish saving scene", error);
         }
     }
 

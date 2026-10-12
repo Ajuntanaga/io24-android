@@ -3,6 +3,7 @@ package dev.ajuntanaga.io24;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -34,7 +35,7 @@ final class EffectRackView extends LinearLayout {
         setOrientation(VERTICAL);
         setPadding(Ui.dp(context, 12), Ui.dp(context, 12),
                 Ui.dp(context, 12), Ui.dp(context, 12));
-        setBackground(Ui.panel(context, R.color.surface_1, 12));
+        Ui.stylePanel(this);
 
         LinearLayout header = Ui.row(context);
         header.addView(Ui.section(context, model.label()), Ui.weight(1));
@@ -45,7 +46,10 @@ final class EffectRackView extends LinearLayout {
                 sink.dispatch(Io24Command.setVoiceFxOn(model, checked));
             }
         });
-        header.addView(on, Ui.weight(1));
+        LinearLayout.LayoutParams powerParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        header.addView(on, powerParams);
         addView(header, Ui.match());
 
         graph = new EffectGraphView(context);

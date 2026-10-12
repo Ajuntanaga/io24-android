@@ -257,6 +257,47 @@ def test_native_dsp_surface_is_allowlisted_and_rate_guarded():
     assert 'addWetDry(context)' in effects
 
 
+def test_standard_eq_editor_exposes_the_complete_uc_control_contract():
+    fat_channel = (PACKAGE / "FatChannelView.java").read_text()
+    graph = (PACKAGE / "EqGraphView.java").read_text()
+    command = (PACKAGE / "Io24Command.java").read_text()
+
+    for key in (
+        "eq_low_on", "eq_low_shelf", "eq_low_q",
+        "eq_lowmid_on", "eq_lowmid_q",
+        "eq_himid_on", "eq_himid_q",
+        "eq_high_on", "eq_high_shelf", "eq_high_q",
+    ):
+        assert f'"{key}"' in command
+    for field in (
+        "Switch[] eqBandOn", "Switch[] eqShelf", "ParameterSlider[] eqQ",
+    ):
+        assert field in fat_channel
+    assert '"eq_" + keys[index] + "_on"' in fat_channel
+    assert '"eq_" + keys[index] + "_q"' in fat_channel
+    assert '"eq_" + keys[index] + "_shelf"' in fat_channel
+    assert '"Band"' in fat_channel
+    assert '"Peak / shelf"' in fat_channel
+    assert "float committedFrequency =" in fat_channel
+    assert "float committedGain =" in fat_channel
+    assert "sink.dispatchAll(List.of(" in fat_channel
+    assert '"EQ band " + (band + 1) + " graph edit"' in fat_channel
+    assert "setListener(" in graph
+    assert "onTouchEvent(" in graph
+    assert "requestDisallowInterceptTouchEvent(true)" in graph
+
+
+def test_scene_storage_replaces_a_synced_file_atomically():
+    store = (PACKAGE / "PresetStore.java").read_text()
+    save_body = store.split("synchronized void save", 1)[1].split(
+        "synchronized PresetCodec.Decoded load", 1
+    )[0]
+
+    assert "output.getFD().sync()" in store
+    assert "Os.rename(" in save_body
+    assert "target.delete()" not in save_body
+
+
 def test_android_preset_ui_maps_two_blocks_per_input_and_names_scene_scope():
     presets = (PACKAGE / "PresetsView.java").read_text()
     native = (PACKAGE / "NativePreset.java").read_text()

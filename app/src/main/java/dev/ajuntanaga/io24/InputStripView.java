@@ -29,7 +29,7 @@ final class InputStripView extends LinearLayout {
         setOrientation(VERTICAL);
         setPadding(Ui.dp(context, 12), Ui.dp(context, 12),
                 Ui.dp(context, 12), Ui.dp(context, 12));
-        setBackground(Ui.panel(context, R.color.surface_1, 12));
+        Ui.stylePanel(this);
 
         TextView title = Ui.section(context, "Input " + channel);
         addView(title, Ui.match());
@@ -54,8 +54,8 @@ final class InputStripView extends LinearLayout {
             }
         });
         toggles.addView(phantom, Ui.weight(1));
-        highPass = Ui.toggle(context, "80 Hz");
-        highPass.setContentDescription("Input " + channel + " fixed high pass");
+        highPass = Ui.toggle(context, "HPF");
+        highPass.setContentDescription("Input " + channel + " high-pass power");
         highPass.setOnCheckedChangeListener((button, checked) -> {
             if (!rendering) {
                 sink.dispatch(Io24Command.setHighPass(channel, checked));

@@ -44,6 +44,8 @@ final class Ui {
         ScrollView result = new ScrollView(context);
         result.setFillViewport(true);
         result.setClipToPadding(false);
+        result.setVerticalFadingEdgeEnabled(true);
+        result.setFadingEdgeLength(dp(context, 16));
         result.setSmoothScrollingEnabled(true);
         result.addView(content, match());
         return result;
@@ -118,7 +120,7 @@ final class Ui {
                 },
                 new int[] {
                         context.getColor(R.color.accent),
-                        context.getColor(R.color.line)
+                        context.getColor(R.color.text_secondary)
                 });
         toggle.setThumbTintList(tint);
         toggle.setTrackTintList(new ColorStateList(
@@ -128,7 +130,7 @@ final class Ui {
                 },
                 new int[] {
                         context.getColor(R.color.accent_dark),
-                        context.getColor(R.color.surface_2)
+                        context.getColor(R.color.line)
                 }));
         return toggle;
     }
@@ -151,8 +153,17 @@ final class Ui {
                 dp(context, 12),
                 dp(context, 12),
                 dp(context, 12));
-        panel.setBackground(panel(context, R.color.surface_1, 12));
+        stylePanel(panel);
         return panel;
+    }
+
+    static void stylePanel(View view) {
+        Context context = view.getContext();
+        GradientDrawable background = panel(context, R.color.surface_1, 12);
+        background.setStroke(dp(context, 1),
+                context.getColor(R.color.panel_edge));
+        view.setBackground(background);
+        view.setElevation(dp(context, 2));
     }
 
     static GradientDrawable panel(Context context, int color, int radiusDp) {

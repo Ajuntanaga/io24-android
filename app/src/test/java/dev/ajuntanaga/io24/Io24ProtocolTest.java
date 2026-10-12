@@ -46,6 +46,25 @@ public final class Io24ProtocolTest {
     }
 
     @Test
+    public void cutoffProgramsTheSameFilterWhilePowerIsOffOrOn() {
+        Io24State off = Io24State.defaults().buildUpon()
+                .setInputHighPass(1, false)
+                .build();
+        Io24State on = off.buildUpon()
+                .setInputHighPass(1, true)
+                .build();
+        Io24Command cutoff = Io24Command.setProcessingParameter(
+                1, "hpf_hz", 406.0f);
+
+        byte[] whileOff = Io24Protocol.encodeTransaction(cutoff, off, 9)
+                .writes().get(0).frame();
+        byte[] whileOn = Io24Protocol.encodeTransaction(cutoff, on, 9)
+                .writes().get(0).frame();
+
+        assertArrayEquals(whileOn, whileOff);
+    }
+
+    @Test
     public void complexCommandCannotFallThroughToAGenericWireWriter() {
         assertThrows(
                 IllegalArgumentException.class,

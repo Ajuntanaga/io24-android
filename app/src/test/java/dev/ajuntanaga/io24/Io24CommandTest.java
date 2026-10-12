@@ -83,13 +83,27 @@ public final class Io24CommandTest {
     public void fatChannelParametersAreTypedAndAndroidExposesStandardModels() {
         assertEquals(7.5f, Io24Command.setProcessingParameter(
                 1, "compressor_ratio", 7.5f).value(), 0.0f);
+        assertEquals(3.25f, Io24Command.setProcessingParameter(
+                1, "eq_lowmid_q", 3.25f).value(), 0.0f);
+        assertEquals(18_000.0f, Io24Command.setProcessingParameter(
+                2, "eq_low_freq", 18_000.0f).value(), 0.0f);
+        assertEquals(1.0f, Io24Command.setProcessingParameter(
+                1, "eq_high_shelf", 1.0f).value(), 0.0f);
         assertThrows(IllegalArgumentException.class, () ->
                 Io24Command.setProcessingParameter(1, "unknown", 1));
+        assertThrows(IllegalArgumentException.class, () ->
+                Io24Command.setProcessingParameter(1, "hpf_on", 1));
         assertThrows(IllegalArgumentException.class, () ->
                 Io24Command.setProcessingParameter(
                         1, "compressor_model", 1));
         assertThrows(IllegalArgumentException.class, () ->
                 Io24Command.setProcessingParameter(1, "eq_model", 2));
+        assertThrows(IllegalArgumentException.class, () ->
+                Io24Command.setProcessingParameter(1, "eq_himid_q", 10.01f));
+        assertThrows(IllegalArgumentException.class, () ->
+                Io24Command.setProcessingParameter(1, "eq_low_on", 0.5f));
+        assertThrows(IllegalArgumentException.class, () ->
+                Io24Command.setProcessingParameter(1, "eq_low_freq", 35.9f));
     }
 
     @Test

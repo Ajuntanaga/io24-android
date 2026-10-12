@@ -582,7 +582,7 @@ public final class Io24Command {
 
     private static Map<String, Range> buildProcessingCatalog() {
         return ranges(
-                "hpf_on", integer(0, 1), "hpf_hz", range(24, 1000),
+                "hpf_hz", range(24, 1000),
                 "gate_on", integer(0, 1),
                 "gate_threshold", range(-84, 0),
                 "gate_range", range(-84, 0),
@@ -599,14 +599,24 @@ public final class Io24Command {
                 "limiter_threshold", range(-28, 0),
                 "eq_model", integer(0, 0),
                 "eq_on", integer(0, 1),
-                "eq_low_freq", range(20, 500),
+                "eq_low_on", integer(0, 1),
+                "eq_low_shelf", integer(0, 1),
+                "eq_low_freq", range(36, 18000),
                 "eq_low_gain", range(-15, 15),
-                "eq_lowmid_freq", range(80, 3000),
+                "eq_low_q", range(0.1f, 10),
+                "eq_lowmid_on", integer(0, 1),
+                "eq_lowmid_freq", range(36, 18000),
                 "eq_lowmid_gain", range(-15, 15),
-                "eq_himid_freq", range(400, 12000),
+                "eq_lowmid_q", range(0.1f, 10),
+                "eq_himid_on", integer(0, 1),
+                "eq_himid_freq", range(36, 18000),
                 "eq_himid_gain", range(-15, 15),
-                "eq_high_freq", range(1000, 20000),
+                "eq_himid_q", range(0.1f, 10),
+                "eq_high_on", integer(0, 1),
+                "eq_high_shelf", integer(0, 1),
+                "eq_high_freq", range(36, 18000),
                 "eq_high_gain", range(-15, 15),
+                "eq_high_q", range(0.1f, 10),
                 "eq_first", integer(0, 1));
     }
 
