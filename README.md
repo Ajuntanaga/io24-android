@@ -90,9 +90,15 @@ currently selected for front-panel use. Because the io24 cannot return a stored
 body, completion is reported as `WRITE_SENT_UNVERIFIED`, not readback or
 power-cycle proof.
 
-The block button selects which block the front panel uses. It does not make the
-firmware reapply that block's stored body. Whole-setup scene loading likewise
-does not move the front-panel selection or change the audio rate.
+Shared device reverb is block 202, outside the firmware's per-input `Stat`
+record. It stays in phone scenes and is reapplied by the app rather than being
+stored in a front-panel block.
+
+The block button selects which block the front panel uses. Firmware contains a
+conditional stored-body apply path, but selection alone did not reapply the
+body in the observed hardware state, so the app does not promise recall on
+selection. Whole-setup scene loading likewise does not move the front-panel
+selection or change the audio rate.
 
 ## High-rate Delay rule
 

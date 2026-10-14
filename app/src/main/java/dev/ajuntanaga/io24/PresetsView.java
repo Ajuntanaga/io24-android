@@ -137,7 +137,7 @@ final class PresetsView implements ControllerView {
         LinearLayout device = Ui.panel(context);
         device.addView(Ui.section(context, "Front-panel preset blocks"), Ui.match());
         device.addView(Ui.caption(context,
-                "Each input has Block 1 and Block 2. Select changes the front-panel choice; firmware does not reapply that block's stored body. Save replaces the exact block you choose."),
+                "Each input has Block 1 and Block 2. Save stores its Fat Channel and compatible Voice FX; shared device reverb stays in phone scenes. Select changes the front-panel choice but does not guarantee stored-body recall."),
                 Ui.match());
         slotInput = spinner(context, new String[] {"Input 1", "Input 2"});
         slotInput.setContentDescription("Device preset input");

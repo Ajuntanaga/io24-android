@@ -301,6 +301,7 @@ def test_scene_storage_replaces_a_synced_file_atomically():
 def test_android_preset_ui_maps_two_blocks_per_input_and_names_scene_scope():
     presets = (PACKAGE / "PresetsView.java").read_text()
     native = (PACKAGE / "NativePreset.java").read_text()
+    readme = (ANDROID / "README.md").read_text()
 
     assert '"Whole-setup scenes"' in presets
     assert '"Front-panel preset blocks"' in presets
@@ -313,6 +314,10 @@ def test_android_preset_ui_maps_two_blocks_per_input_and_names_scene_scope():
     assert "Native preset body is too large" in native
     assert "Delay cannot be stored active in a device block" in native
     assert '"Select block for front-panel use"' in presets
+    assert "shared device reverb stays in phone scenes" in presets
+    assert "does not guarantee stored-body recall" in presets
+    assert "Shared device reverb is block 202" in readme
+    assert "conditional stored-body apply path" in readme
     assert '"Load selected block"' not in presets
     assert '"Slot 3"' not in presets
     assert '"Slot 4"' not in presets
