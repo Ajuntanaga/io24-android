@@ -8,9 +8,9 @@
     <color name="display_edge">#34434A</color>
     <color name="text_primary">#F1F5F7</color>
     <color name="text_secondary">#AFBBC4</color>
-    <color name="accent">#61D39B</color>
-    <color name="accent_glow">#7052DFA2</color>
-    <color name="accent_dark">#173E30</color>
+    <color name="accent">#FF873D</color>
+    <color name="accent_glow">#70FF873D</color>
+    <color name="accent_dark">#743511</color>
     <color name="warning">#F1BC61</color>
     <color name="danger">#F07676</color>
 </resources>

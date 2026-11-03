@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Brought the Host ivory/orange rack styling to Android Fat Channel and Voice FX,
+  with powder-coat stipple, separate rack ears, and crisp unblurred traces.
+- Added a lightweight triangulated reverb illustration responding to room size,
+  wet return, high-pass, pre-delay, and bypass; it is not an audio analyzer.
+- Kept the existing native control paths and Standard-only EQ support.
+
 - Moved the Android controller into its own repository with independent CI,
   security scanning, dependency updates, and publication checks.
 - Updated the pinned build toolchain to Gradle 9.7.1 and Android Gradle Plugin

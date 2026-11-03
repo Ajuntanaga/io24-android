@@ -47,6 +47,8 @@ app/src/main/java/dev/ajuntanaga/io24/PresetCodec.java
 app/src/main/java/dev/ajuntanaga/io24/PresetStore.java
 app/src/main/java/dev/ajuntanaga/io24/PresetsView.java
 app/src/main/java/dev/ajuntanaga/io24/ProbeResult.java
+app/src/main/java/dev/ajuntanaga/io24/RackDrawable.java
+app/src/main/java/dev/ajuntanaga/io24/ReverbMeshView.java
 app/src/main/java/dev/ajuntanaga/io24/SimulatedIo24Control.java
 app/src/main/java/dev/ajuntanaga/io24/TraceView.java
 app/src/main/java/dev/ajuntanaga/io24/Ui.java

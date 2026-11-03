@@ -21,6 +21,7 @@ final class EffectsView implements ControllerView {
     private final TextView placement;
     private final LinearLayout rackContainer;
     private final Switch reverbOn;
+    private final ReverbMeshView reverbMesh;
     private final ParameterSlider reverbSize;
     private final ParameterSlider reverbMix;
     private final ParameterSlider reverbHighPass;
@@ -117,6 +118,8 @@ final class EffectsView implements ControllerView {
             }
         });
         reverb.addView(reverbOn, Ui.spaced(context));
+        reverbMesh = new ReverbMeshView(context);
+        reverb.addView(reverbMesh, Ui.spaced(context));
         reverbSize = reverbSlider(
                 context, reverb, "Room size", 0, 1, 100,
                 ParameterSlider.Scale.LINEAR, Ui::percent);
@@ -131,6 +134,7 @@ final class EffectsView implements ControllerView {
                 ParameterSlider.Scale.LINEAR,
                 value -> String.format(java.util.Locale.US,
                         "%.1f ms", value * 1000.0f));
+        Ui.styleRack(reverb);
         content.addView(reverb, Ui.spaced(context));
         root = Ui.scroll(context, content);
     }
@@ -162,6 +166,7 @@ final class EffectsView implements ControllerView {
         reverbMix.setValue(current.mix());
         reverbHighPass.setValue(current.highPassHz());
         reverbPreDelay.setValue(current.preDelaySeconds());
+        updateReverbMesh();
         rendering = false;
         reverbOn.setEnabled(enabled);
         for (ParameterSlider slider : new ParameterSlider[] {
@@ -189,6 +194,7 @@ final class EffectsView implements ControllerView {
         ParameterSlider result = new ParameterSlider(
                 context, label, min, max, steps, scale, formatter);
         result.setListener((value, committed) -> {
+            updateReverbMesh();
             if (committed && !rendering) {
                 sendReverb();
             }
@@ -197,7 +203,13 @@ final class EffectsView implements ControllerView {
         return result;
     }
 
+    private void updateReverbMesh() {
+        reverbMesh.setParameters(reverbOn.isChecked(), reverbSize.value(),
+                reverbMix.value(), reverbHighPass.value(), reverbPreDelay.value());
+    }
+
     private void sendReverb() {
+        updateReverbMesh();
         sink.dispatch(Io24Command.setReverb(
                 reverbOn.isChecked(),
                 reverbSize.value(),

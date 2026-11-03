@@ -91,6 +91,7 @@ final class FatChannelView implements ControllerView {
         highPassFrequency = slider(
                 context, filter, "hpf_hz", "Cutoff", 24, 1000, 244,
                 ParameterSlider.Scale.LOG, Ui::hz);
+        Ui.styleRack(filter);
         content.addView(filter, Ui.spaced(context));
 
         LinearLayout gate = Ui.panel(context);
@@ -107,6 +108,7 @@ final class FatChannelView implements ControllerView {
         gateRelease = slider(context, gate, "gate_release", "Release",
                 0.05f, 2.0f, 195, ParameterSlider.Scale.LOG,
                 value -> millis(value));
+        Ui.styleRack(gate);
         content.addView(gate, Ui.spaced(context));
 
         LinearLayout compressor = Ui.panel(context);
@@ -141,6 +143,7 @@ final class FatChannelView implements ControllerView {
         compressorGain = slider(
                 context, compressor, "compressor_gain", "Makeup",
                 0, 28, 112, ParameterSlider.Scale.LINEAR, Ui::db);
+        Ui.styleRack(compressor);
         content.addView(compressor, Ui.spaced(context));
 
         LinearLayout limiter = Ui.panel(context);
@@ -150,6 +153,7 @@ final class FatChannelView implements ControllerView {
         limiterThreshold = slider(
                 context, limiter, "limiter_threshold", "Ceiling",
                 -28, 0, 112, ParameterSlider.Scale.LINEAR, Ui::db);
+        Ui.styleRack(limiter);
         content.addView(limiter, Ui.spaced(context));
 
         LinearLayout equalizer = Ui.panel(context);
@@ -254,6 +258,7 @@ final class FatChannelView implements ControllerView {
         });
         eqFirst = toggle(context, "EQ before compressor", "eq_first");
         equalizer.addView(eqFirst, Ui.spaced(context));
+        Ui.styleRack(equalizer);
         content.addView(equalizer, Ui.spaced(context));
         root = Ui.scroll(context, content);
     }

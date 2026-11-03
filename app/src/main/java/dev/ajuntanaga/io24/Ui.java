@@ -166,6 +166,35 @@ final class Ui {
         view.setElevation(dp(context, 2));
     }
 
+    static void styleRack(LinearLayout view) {
+        Context context = view.getContext();
+        view.setBackground(new RackDrawable(context.getResources().getDisplayMetrics().density));
+        view.setPadding(dp(context, 22), dp(context, 14), dp(context, 22), dp(context, 16));
+        rackText(view);
+    }
+
+    private static void rackText(View view) {
+        if (view instanceof android.widget.Spinner) {
+            // Spinner children are created after layout, so keep their themed text
+            // on a recessed dark surface rather than recoloring transient children.
+            view.setBackground(panel(view.getContext(), R.color.surface_2, 4));
+            return;
+        }
+        if (view instanceof SeekBar) {
+            SeekBar seek = (SeekBar) view;
+            seek.setProgressBackgroundTintList(ColorStateList.valueOf(0xff7a8276));
+            seek.setProgressTintList(ColorStateList.valueOf(0xffb94410));
+            seek.setThumbTintList(ColorStateList.valueOf(0xffb94410));
+        }
+        if (view instanceof TextView) {
+            ((TextView) view).setTextColor(0xff252c26);
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) rackText(group.getChildAt(i));
+        }
+    }
+
     static GradientDrawable panel(Context context, int color, int radiusDp) {
         GradientDrawable background = new GradientDrawable();
         background.setColor(context.getColor(color));

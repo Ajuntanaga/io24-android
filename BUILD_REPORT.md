@@ -1,28 +1,27 @@
 # Android controller build report
 
-Clean offline build completed on 2026-10-12.
+Clean offline build completed on 2026-11-02.
 
 ## Artifact
 
 - APK: `app/build/outputs/apk/debug/app-debug.apk`
-- SHA-256: `f497ae5b1594b3bc88115da5089e523972cad772963f0bb1c7b2d9912cdd8a46`
-- Size: 1,007,871 bytes
+- SHA-256: `f202aa4351c0d2702b9da5d78609041abf1282c8925e5812748ce3f2fb8273f3`
+- Size: 1,011,864 bytes
 - Package: `dev.ajuntanaga.io24`
 - Version: `0.3.6` (`versionCode` 11)
 - Android: API 23 minimum, API 35 target
-- Signing: Android debug certificate; v1 and v2 signatures verified
+- Signing: Android debug certificate
 
 ## Automated verification
 
 - Standalone source, protocol, toolchain, and publication contracts: 25 passed
 - Java unit tests: 74 passed, 0 failed, 0 skipped
-- Android lint: no issues found
+- Android lint: zero errors; existing SDK currency warnings `OldTargetApi` and
+  `GradleDependency`
 - Clean debug APK assembly: passed
 - Toolchain: Gradle 9.7.1, Android Gradle Plugin 9.4.1, Temurin 17
 - Manifest: USB host feature only; no requested permissions
 - USB entry: launcher only; no automatic `USB_DEVICE_ATTACHED` activity
-- APK privacy scan: no home paths, workstation hostname, old transfer URL,
-  Wine path, or repository path found
 
 The native byte suite covers scalar state/write framing, ACK parsing, mixer
 blocks, both Voice FX input assignments, all six Voice FX models, reverb,
@@ -45,9 +44,29 @@ USB release drains on the serial worker, queued writes are discarded after a
 disconnect, and an interrupted scene reports its confirmed progress plus the
 possibility of a partially changed device.
 
+## Rack update
+
+Ivory powder-coated panels and orange controls now cover Fat Channel and Voice
+FX. Rack screws stay on separate ears. Selectors retain dark recessed surfaces
+for legible text, and slider tracks use stronger contrast on ivory. Graph blur
+was removed. The reverb mesh is a bounded parameter illustration, not a live
+audio analyzer; it has no continuous animation timer. Native control semantics
+and Standard-only EQ support remain unchanged.
+
 ## Emulator acceptance
 
-The current 0.3.6 candidate was inspected at 720x1600 and 320 dpi on Android
+For the 2026-11-02 rack update, screenshots at 720x1600 / 320 dpi on
+Android 15 confirmed HPF, gate, compressor, and reverb panel layout. The
+reverb mesh and separate rack ears were visible without label overlaps.
+That inspection found low-contrast selector text and slider tracks, which
+were corrected and passed the full clean verification run. The rebuilt APK
+installed and launched in the simulator. The workstation process/thread
+limit interrupted the final screenshot recheck; the emulator was stopped.
+Final visual confirmation of those contrast corrections remains pending.
+No physical phone or io24 was accessed.
+
+
+The preceding 2026-10-12 0.3.6 candidate was inspected at 720x1600 and 320 dpi on Android
 15. The run verified:
 
 - Mixer, Fat Channel, Effects, Presets, and Device navigation and layout;

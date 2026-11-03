@@ -129,6 +129,7 @@ final class EffectRackView extends LinearLayout {
         }
         voicedValue = localVoicedValue;
         voicedMeter = localVoicedMeter;
+        Ui.styleRack(this);
     }
 
     void render(Io24State state, boolean enabled) {

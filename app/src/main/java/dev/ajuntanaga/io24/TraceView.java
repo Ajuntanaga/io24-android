@@ -26,10 +26,6 @@ abstract class TraceView extends View {
         tracePaint.setColor(context.getColor(R.color.accent));
         tracePaint.setStrokeWidth(Ui.dp(context, 2));
         tracePaint.setStyle(Paint.Style.STROKE);
-        tracePaint.setShadowLayer(
-                Ui.dp(context, 4), 0, 0,
-                context.getColor(R.color.accent_glow));
-        setLayerType(LAYER_TYPE_SOFTWARE, null);
         setMinimumHeight(Ui.dp(context, 120));
     }
 
