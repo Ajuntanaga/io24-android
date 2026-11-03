@@ -58,6 +58,22 @@ remaining screens therefore still need emulator interaction checks; the
 automated suite does not substitute for those checks. No physical device was
 accessed.
 
+## Resource-limited continuation (2026-11-03)
+
+A second attempt installed the updated APK and invoked verified simulation
+using one guest CPU and two host CPUs. Session thread usage nevertheless rose
+to 382 of 384 slots. The screenshot command did not produce a usable capture
+before the session was interrupted. This attempt adds no visual or interaction
+acceptance evidence. A subsequent process check found no audit emulator left
+running.
+
+At the user’s request, leave the emulator stopped and avoid another launch or
+full build while resource capacity remains unresolved. The next UI check should
+verify non-touch slider commits and Voice FX state reconciliation first, then
+finish the contrast and navigation checks described above. Existing automated
+results remain valid for the unchanged application source; physical-device
+acceptance remains separate.
+
 ## Rack update
 
 Ivory powder-coated panels and orange controls now cover Fat Channel and Voice
