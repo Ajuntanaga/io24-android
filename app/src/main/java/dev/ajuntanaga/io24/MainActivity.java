@@ -168,6 +168,25 @@ public final class MainActivity extends Activity {
         super.onDestroy();
     }
 
+    private View scrollButtonRow(LinearLayout row) {
+        for (int i = 0; i < row.getChildCount(); i++) {
+            Button button = (Button) row.getChildAt(i);
+            button.setSingleLine(true);
+            button.setPadding(Ui.dp(this, 12), Ui.dp(this, 8),
+                    Ui.dp(this, 12), Ui.dp(this, 8));
+            LinearLayout.LayoutParams params = (LinearLayout.LayoutParams)
+                    button.getLayoutParams();
+            params.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+            params.weight = 0;
+            button.setLayoutParams(params);
+        }
+        android.widget.HorizontalScrollView scroller =
+                new android.widget.HorizontalScrollView(this);
+        scroller.setHorizontalScrollBarEnabled(true);
+        scroller.addView(row);
+        return scroller;
+    }
+
     private View buildShell() {
         boolean compactLandscape = getResources().getConfiguration().orientation
                 == Configuration.ORIENTATION_LANDSCAPE;
@@ -202,12 +221,18 @@ public final class MainActivity extends Activity {
                 Ui.dp(this, 16),
                 Ui.dp(this, compactLandscape ? 6 : 12));
         banner.setBackgroundColor(getColor(R.color.surface_1));
-        LinearLayout heading = Ui.row(this);
-        heading.addView(Ui.title(this, getString(R.string.app_name)), Ui.weight(2));
+        // Give enlarged status text a full row instead of splitting words in
+        // the narrow trailing third of the portrait header.
+        boolean stackedHeading = !compactLandscape
+                && getResources().getConfiguration().fontScale >= 1.3f;
+        LinearLayout heading = stackedHeading ? Ui.column(this) : Ui.row(this);
+        heading.addView(Ui.title(this, getString(R.string.app_name)),
+                stackedHeading ? Ui.match() : Ui.weight(2));
         connectionStatus = Ui.caption(this, getString(R.string.status_connect_device));
         connectionStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        connectionStatus.setGravity(android.view.Gravity.END);
-        heading.addView(connectionStatus, Ui.weight(1));
+        connectionStatus.setGravity(stackedHeading
+                ? android.view.Gravity.START : android.view.Gravity.END);
+        heading.addView(connectionStatus, stackedHeading ? Ui.match() : Ui.weight(1));
         connectionDetail = Ui.caption(
                 this, getString(R.string.status_connect_device));
         connectionDetail.setAccessibilityLiveRegion(
@@ -228,6 +253,8 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams disconnectParams = Ui.weight(1);
         disconnectParams.leftMargin = Ui.dp(this, 8);
         actions.addView(disconnect, disconnectParams);
+        boolean largeControls = getResources().getConfiguration().fontScale >= 1.7f;
+        View actionView = largeControls ? scrollButtonRow(actions) : actions;
         if (compactLandscape) {
             LinearLayout identity = Ui.column(this);
             identity.addView(heading, Ui.match());
@@ -237,12 +264,12 @@ public final class MainActivity extends Activity {
             compactBanner.addView(identity, Ui.weight(1));
             LinearLayout.LayoutParams actionParams = Ui.weight(1);
             actionParams.leftMargin = Ui.dp(this, 16);
-            compactBanner.addView(actions, actionParams);
+            compactBanner.addView(actionView, actionParams);
             banner.addView(compactBanner, Ui.match());
         } else {
             banner.addView(heading, Ui.match());
             banner.addView(connectionDetail, Ui.spaced(this));
-            banner.addView(actions, Ui.spaced(this));
+            banner.addView(actionView, Ui.spaced(this));
         }
         root.addView(banner, Ui.match());
 
@@ -304,7 +331,7 @@ public final class MainActivity extends Activity {
             }
             nav.addView(button, params);
         }
-        root.addView(nav, Ui.match());
+        root.addView(largeControls ? scrollButtonRow(nav) : nav, Ui.match());
         return root;
     }
 

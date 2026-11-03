@@ -45,7 +45,8 @@ final class InputStripView extends LinearLayout {
                 value -> gainValue.setText("Gain " + Ui.db(value / 2.0f))));
         addView(gain, Ui.match());
 
-        LinearLayout toggles = Ui.row(context);
+        boolean largeText = getResources().getConfiguration().fontScale >= 1.7f;
+        LinearLayout toggles = largeText ? Ui.column(context) : Ui.row(context);
         phantom = Ui.toggle(context, "48V");
         phantom.setContentDescription("Input " + channel + " phantom power");
         phantom.setOnCheckedChangeListener((button, checked) -> {
@@ -53,7 +54,7 @@ final class InputStripView extends LinearLayout {
                 sink.dispatch(Io24Command.setPhantom(channel, checked));
             }
         });
-        toggles.addView(phantom, Ui.weight(1));
+        toggles.addView(phantom, largeText ? Ui.match() : Ui.weight(1));
         highPass = Ui.toggle(context, "HPF");
         highPass.setContentDescription("Input " + channel + " high-pass power");
         highPass.setOnCheckedChangeListener((button, checked) -> {
@@ -61,7 +62,7 @@ final class InputStripView extends LinearLayout {
                 sink.dispatch(Io24Command.setHighPass(channel, checked));
             }
         });
-        toggles.addView(highPass, Ui.weight(1));
+        toggles.addView(highPass, largeText ? Ui.match() : Ui.weight(1));
         mute = Ui.toggle(context, "Mute");
         mute.setContentDescription("Input " + channel + " mute");
         mute.setOnCheckedChangeListener((button, checked) -> {
@@ -69,7 +70,7 @@ final class InputStripView extends LinearLayout {
                 sink.dispatch(Io24Command.setInputMute(channel, checked));
             }
         });
-        toggles.addView(mute, Ui.weight(1));
+        toggles.addView(mute, largeText ? Ui.match() : Ui.weight(1));
         addView(toggles, Ui.match());
 
         fxMixValue = Ui.label(context, "Processing 100%");

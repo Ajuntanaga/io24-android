@@ -27,6 +27,10 @@ final class DeviceView implements ControllerView {
     private final Button refresh;
     private final Runnable refreshAction;
     private boolean rendering;
+    // Spinner selection callbacks may arrive after render() returns.
+    private int renderedRatePosition;
+    private int renderedDelayPosition;
+    private int renderedPhonePosition;
 
     DeviceView(Context context, CommandSink sink, Runnable refreshAction) {
         this.sink = sink;
@@ -52,7 +56,8 @@ final class DeviceView implements ControllerView {
                     View view,
                     int position,
                     long id) {
-                if (!rendering) {
+                if (!rendering && sampleRate.isEnabled()
+                        && position != renderedRatePosition) {
                     if (position > 0) {
                         sink.dispatch(Io24Command.setSampleRate(
                                 new int[] {44_100, 48_000, 88_200, 96_000}[
@@ -83,7 +88,8 @@ final class DeviceView implements ControllerView {
                     View view,
                     int position,
                     long id) {
-                if (!rendering) {
+                if (!rendering && delayBus.isEnabled()
+                        && position != renderedDelayPosition) {
                     sink.dispatch(Io24Command.setOutputDelayBus(
                             new int[] {-1, 0, 1, 2}[position]));
                 }
@@ -119,7 +125,8 @@ final class DeviceView implements ControllerView {
                     View view,
                     int position,
                     long id) {
-                if (!rendering) {
+                if (!rendering && phoneSource.isEnabled()
+                        && position != renderedPhonePosition) {
                     sink.dispatch(Io24Command.setPhoneSource(
                             Io24State.PhoneSource.values()[position]));
                 }
@@ -166,13 +173,16 @@ final class DeviceView implements ControllerView {
         boolean enabled = state.connectionStatus()
                 == Io24State.ConnectionStatus.CONNECTED && !state.busy();
         rendering = true;
-        sampleRate.setSelection(state.sampleRateConfirmed()
-                ? ratePosition(state.sampleRateHz()) + 1 : 0, false);
+        renderedRatePosition = state.sampleRateConfirmed()
+                ? ratePosition(state.sampleRateHz()) + 1 : 0;
+        sampleRate.setSelection(renderedRatePosition, false);
         int delayValue = Math.round(value(
                 state, "output_delay_bus", 0));
-        delayBus.setSelection(delayPosition(delayValue), false);
+        renderedDelayPosition = delayPosition(delayValue);
+        delayBus.setSelection(renderedDelayPosition, false);
         outputDelay.setValue(state.outputDelaySeconds());
-        phoneSource.setSelection(state.phoneSource().ordinal(), false);
+        renderedPhonePosition = state.phoneSource().ordinal();
+        phoneSource.setSelection(renderedPhonePosition, false);
         muteSync.setChecked(value(state, "mute_sync", 0) >= 0.5f);
         boolean mainMuted = value(state, "main_hardware_muted", 0) >= 0.5f;
         hardwareMute.setText("Front-panel Main mute: "

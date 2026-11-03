@@ -1,12 +1,12 @@
 # Android controller build report
 
-Clean offline build completed on 2026-11-02.
+Clean offline build completed on 2026-11-03.
 
 ## Artifact
 
 - APK: `app/build/outputs/apk/debug/app-debug.apk`
-- SHA-256: `65540a85ef6be4aa1745a1dbb9547846f55f5a68fd21009cd3b66edadfa83d2d`
-- Size: 1,012,076 bytes
+- SHA-256: `c7ad0f4d50dee04f48c6a6fd65cb02713aea637ece9d69b20b9499762825ff72`
+- Size: 1,013,072 bytes
 - Package: `dev.ajuntanaga.io24`
 - Version: `0.3.6` (`versionCode` 11)
 - Android: API 23 minimum, API 35 target
@@ -158,3 +158,22 @@ the direct Android transport and USB-audio coexistence, plus application of the
 Input 2 mute write. The expanded mixer, Fat Channel, Voice FX, reverb, scene,
 and high-rate paths are ready for, but not promoted beyond, the next physical
 acceptance run.
+
+## Large-text and landscape follow-up (2026-11-03)
+
+Repaired portrait heading/status placement at 150% text size. At 200%, action
+and navigation rows scroll horizontally rather than breaking button labels,
+and input switches stack vertically so their labels remain intact.
+
+Device settings now ignores delayed programmatic spinner callbacks. Opening
+Device while disconnected no longer triggers a false connection error. In the
+verified simulator, selecting Headphones: Mix A still updates state and survives
+Refresh. Final screenshots were inspected at 150% and 200% portrait and normal
+landscape. The horizontally scrolling navigation reaches Device successfully.
+
+The final clean offline verification passed all 25 contracts, 74 Java tests,
+lint, and APK assembly. The emulator used two cores and 2560 MB; build and
+emulator work ran separately. Cold boot displayed a System UI ANR that settled
+after Wait; this was not an app crash. Font scale and rotation settings were
+restored and the emulator stopped after inspection. These checks do not verify
+physical-phone behavior or live io24 USB/audio operation.
