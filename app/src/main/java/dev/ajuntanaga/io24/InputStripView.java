@@ -101,6 +101,7 @@ final class InputStripView extends LinearLayout {
             IntAction stopped,
             IntAction changed) {
         return new SeekBar.OnSeekBarChangeListener() {
+            private boolean trackingTouch;
             @Override
             public void onProgressChanged(
                     SeekBar seekBar,
@@ -108,15 +109,20 @@ final class InputStripView extends LinearLayout {
                     boolean fromUser) {
                 if (fromUser) {
                     changed.run(progress);
+                    if (!trackingTouch && !rendering) {
+                        stopped.run(progress);
+                    }
                 }
             }
 
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {
+                trackingTouch = true;
             }
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
+                trackingTouch = false;
                 if (!rendering) {
                     stopped.run(seekBar.getProgress());
                 }

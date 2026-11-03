@@ -5,8 +5,8 @@ Clean offline build completed on 2026-11-02.
 ## Artifact
 
 - APK: `app/build/outputs/apk/debug/app-debug.apk`
-- SHA-256: `f202aa4351c0d2702b9da5d78609041abf1282c8925e5812748ce3f2fb8273f3`
-- Size: 1,011,864 bytes
+- SHA-256: `65540a85ef6be4aa1745a1dbb9547846f55f5a68fd21009cd3b66edadfa83d2d`
+- Size: 1,012,076 bytes
 - Package: `dev.ajuntanaga.io24`
 - Version: `0.3.6` (`versionCode` 11)
 - Android: API 23 minimum, API 35 target
@@ -43,6 +43,20 @@ The controller tests also prove that Disconnect publishes immediately while
 USB release drains on the serial worker, queued writes are discarded after a
 disconnect, and an interrupted scene reports its confirmed progress plus the
 possibility of a partially changed device.
+
+## Android audit follow-up
+
+The code audit repaired non-touch slider commits in ParameterSlider and the
+three mixer control classes. Voice FX selection now reconciles with confirmed
+state when an operation finishes instead of permanently retaining a local
+selection. Redundant model and input picker callbacks no longer send commands.
+
+The emulator installed and launched the APK and displayed the disconnected
+Mixer correctly. After simulated Connect, QEMU failed to create a thread and
+exited under the workstation process limit. The new interaction fixes and
+remaining screens therefore still need emulator interaction checks; the
+automated suite does not substitute for those checks. No physical device was
+accessed.
 
 ## Rack update
 

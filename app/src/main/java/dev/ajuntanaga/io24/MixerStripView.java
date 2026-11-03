@@ -87,6 +87,7 @@ final class MixerStripView extends LinearLayout {
             IntAction changed,
             IntAction stopped) {
         return new SeekBar.OnSeekBarChangeListener() {
+            private boolean trackingTouch;
             @Override
             public void onProgressChanged(
                     SeekBar seekBar,
@@ -94,15 +95,20 @@ final class MixerStripView extends LinearLayout {
                     boolean fromUser) {
                 if (fromUser) {
                     changed.run(progress);
+                    if (!trackingTouch && !rendering) {
+                        stopped.run(progress);
+                    }
                 }
             }
 
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {
+                trackingTouch = true;
             }
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
+                trackingTouch = false;
                 if (!rendering) {
                     stopped.run(seekBar.getProgress());
                 }

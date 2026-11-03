@@ -31,7 +31,6 @@ final class EffectsView implements ControllerView {
             Io24State.VoiceFxModel.TRANSFORMER;
     private EffectRackView rack;
     private boolean rendering;
-    private boolean modelTouched;
 
     EffectsView(Context context, CommandSink sink) {
         this.context = context;
@@ -55,7 +54,7 @@ final class EffectsView implements ControllerView {
                     View view,
                     int position,
                     long id) {
-                if (!rendering) {
+                if (!rendering && position + 1 != lastState.voiceFxInput()) {
                     sink.dispatch(Io24Command.setVoiceFxInput(position + 1));
                 }
             }
@@ -76,10 +75,9 @@ final class EffectsView implements ControllerView {
                     long id) {
                 Io24State.VoiceFxModel next =
                         Io24State.VoiceFxModel.values()[position];
-                if (rendering) {
+                if (rendering || next == selectedModel) {
                     return;
                 }
-                modelTouched = true;
                 selectedModel = next;
                 rebuildRack();
                 rack.render(lastState, connected(lastState)
@@ -148,8 +146,10 @@ final class EffectsView implements ControllerView {
     public void render(Io24State state) {
         lastState = state;
         boolean enabled = connected(state);
-        if (!modelTouched) {
+        // Keep an in-flight choice visible, then reconcile both success and failure.
+        if (!state.busy() && selectedModel != state.selectedVoiceFx()) {
             selectedModel = state.selectedVoiceFx();
+            rebuildRack();
         }
         boolean delaySafe = selectedModel != Io24State.VoiceFxModel.DELAY
                 || state.sampleRateConfirmed()

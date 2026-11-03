@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Fixed keyboard and accessibility slider changes failing to commit across mixer
+  and parameter controls; touch drags still commit on release.
+- Reconciled the Voice FX rack with confirmed state after commands, reconnects,
+  and refreshes, and ignored redundant picker callbacks.
+
 - Brought the Host ivory/orange rack styling to Android Fat Channel and Voice FX,
   with powder-coat stipple, separate rack ears, and crisp unblurred traces.
 - Added a lightweight triangulated reverb illustration responding to room size,

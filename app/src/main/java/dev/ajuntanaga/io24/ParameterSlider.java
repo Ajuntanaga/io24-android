@@ -6,7 +6,7 @@ import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
-/** Labelled float slider with linear or logarithmic mapping and stop commits. */
+/** Labelled float slider with linear or logarithmic mapping and touch, keyboard, or accessibility commits. */
 @SuppressLint({"ViewConstructor", "SetTextI18n"})
 final class ParameterSlider extends LinearLayout {
     enum Scale {
@@ -55,6 +55,7 @@ final class ParameterSlider extends LinearLayout {
         seek = Ui.seek(context, steps);
         seek.setContentDescription(name);
         seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            private boolean trackingTouch;
             @Override
             public void onProgressChanged(
                     SeekBar seekBar,
@@ -63,16 +64,18 @@ final class ParameterSlider extends LinearLayout {
                 float value = valueFromProgress(progress);
                 valueLabel.setText(name + " " + formatter.format(value));
                 if (fromUser && listener != null) {
-                    listener.changed(value, false);
+                    listener.changed(value, !trackingTouch);
                 }
             }
 
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {
+                trackingTouch = true;
             }
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
+                trackingTouch = false;
                 if (!rendering && listener != null) {
                     listener.changed(value(), true);
                 }
