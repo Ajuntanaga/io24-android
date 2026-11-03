@@ -74,6 +74,41 @@ finish the contrast and navigation checks described above. Existing automated
 results remain valid for the unchanged application source; physical-device
 acceptance remains separate.
 
+## Completed emulator continuation (2026-11-03)
+
+The user authorized additional resource headroom. Runtime task limits were
+raised to 1,536 for this session and 2,048 for its parent Codex slice. The
+session memory ceiling remained 10 GB. One emulator ran with two guest cores,
+two host CPUs, two software-renderer threads, and 2.5 GB guest RAM; no build
+ran alongside it. During interaction, session usage was about 323 tasks and
+4.5 GB RAM, with zero current memory pressure. At completion, all session
+memory-limit and OOM event counters were zero. The emulator was then stopped.
+These results resolve the pending portrait interaction and contrast checks
+from the two interrupted attempts above.
+
+The existing 0.3.6 APK was installed and checked on Android 15 at 720x1600,
+320 dpi. Application source and APK were unchanged, so the preceding complete
+verification results still apply. This pass confirmed:
+
+- Keyboard gain adjustment from 0 to +3 dB survives Refresh.
+- Keyboard cutoff adjustment from 80 to 96 Hz survives Refresh.
+- Selecting De-Tuner updates both picker and rack; both remain consistent
+  after Refresh and disconnect/reconnect.
+- An injected gain readback failure retains the confirmed 0 dB value, shows
+  `Simulated state readback failed`, disables writes, and leaves Connect
+  available while Refresh and Disconnect are disabled.
+- At 96 kHz, the selected Delay rack cannot be enabled and explains the
+  sample-rate restriction.
+- Mixer, Fat Channel, Effects, Presets, and Device navigation works. Portrait
+  screenshots show legible selectors and sliders, separate rack ears, and
+  accessible bottom navigation. HPF, gate, compressor, limiter, Standard EQ,
+  Voice FX, and the parameter-driven reverb mesh were visually inspected.
+- The emulator crash buffer was empty after the checks.
+
+This pass used only simulation. It does not establish physical-phone USB,
+call/Bluetooth stability, audible processing, or device-resident persistence.
+Landscape and enlarged system-font layouts were not checked in this pass.
+
 ## Rack update
 
 Ivory powder-coated panels and orange controls now cover Fat Channel and Voice
@@ -92,7 +127,8 @@ That inspection found low-contrast selector text and slider tracks, which
 were corrected and passed the full clean verification run. The rebuilt APK
 installed and launched in the simulator. The workstation process/thread
 limit interrupted the final screenshot recheck; the emulator was stopped.
-Final visual confirmation of those contrast corrections remains pending.
+Final portrait visual confirmation of those contrast corrections passed in the
+2026-11-03 continuation above.
 No physical phone or io24 was accessed.
 
 
