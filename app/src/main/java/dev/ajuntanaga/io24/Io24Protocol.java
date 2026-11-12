@@ -388,7 +388,7 @@ public final class Io24Protocol {
         } else if (parameter.startsWith("eq_")) {
             if (Math.round(values.value("eq_model", 0)) != 0) {
                 throw new IllegalArgumentException(
-                        "Passive and Vintage EQ require the retained UC designer");
+                        "Passive and Vintage EQ are not yet supported on Android; use the Linux Host");
             }
             addBlobs(result, NativeDsp.BLOCK_EQ, blockIndex,
                     NativeDsp.standardEq(values.values, state.sampleRateHz()),

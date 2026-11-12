@@ -124,9 +124,11 @@ safety message.
 
 ## Honest limits
 
-- Tube and FET compressors, plus Passive and Vintage EQ, depend on Universal
-  Control's retained desktop designer. The Android app exposes only the exact
-  native Standard models instead of approximating those alternatives.
+- Android exposes Standard EQ and Standard compression. Passive and Vintage EQ
+  now have DLL-free native calculations in the [Linux Host](https://github.com/Ajuntanaga/io24),
+  but that engine has not been ported to Android. Tube and FET compressor
+  controls also remain unavailable here. Imported alternative models are rejected
+  rather than silently replaced with Standard.
 - Mono-source pan, stereo width, writable names, persistent Mirror Main, and a
   writable front-panel Main-mute latch still have no proved io24 command. Pan
   may exist in imported scene data, but this app does not present it as a

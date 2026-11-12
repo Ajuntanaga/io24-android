@@ -41,3 +41,9 @@
   Voice FX and reverb controls, channel 2 handling, and high-rate Delay safety.
 - Added emulator acceptance coverage and retained the physically proved direct
   USB control and Android USB-audio coexistence path.
+
+## Unreleased
+
+- Clarify that Passive and Vintage EQ now run natively in the Linux Host,
+  while Android still supports Standard EQ only. Update the unsupported-model
+  error without changing device commands or silently substituting models.
