@@ -27,6 +27,64 @@ readback, alternate-model switching (including alternate EQ back to Standard),
 and the compressor issue still need physical acceptance. AutoGain
 remains unavailable; no inactive firmware control was added in its place.
 
+## Compressor breakup follow-up — 2026-11-17
+
+The user clarified that the sound may be buffering/stuttering rather than
+conventional distortion. No new live hardware operation or audio capture was
+performed during this investigation.
+
+Source tracing found:
+
+- The app owns vendor control interface 5, not an audio stream. Its code does
+  not use AudioTrack or AudioRecord. Phone audio-path buffering, if involved,
+  is outside this controller's sample processing.
+- Touch-slider movement previews locally; release commits one parameter edit.
+  This behavior also existed in the previously published 0.3.6 source.
+- A Standard compressor edit writes two complete CPXT records, indices 0 and
+  1. Each waits for an optional SetP acknowledgement with a 1,600 ms response
+  deadline. Absent replies can therefore add approximately 3.2 seconds of
+  acknowledgement waiting, excluding write time. This is a possible control
+  delay, not measured audio-buffer underrun evidence. The timeout also existed
+  in 0.3.6. It has not been shortened without measuring reply behavior.
+- The complete records use the app's retained compressor state. JaSt readback
+  does not supply all compressor settings, so an edit after an externally
+  loaded preset can also send the app's other compressor values. This is a
+  possible first-edit discontinuity, not an established cause of continued
+  breakup at a fixed setting.
+- The Linux reference uses the same two-record sequence; its historical
+  optional acknowledgement timeout is 2,000 ms, versus Android's 1,600 ms.
+  Android is not uniquely introducing that wait.
+- More specifically, Android's Standard record fixes hard knee, identity
+  sidechain filter, and key listen off, whereas the Linux encoder supports
+  soft knee, Auto mode, sidechain filtering, and key listen. A full-record
+  Attack edit can therefore replace those non-default preset settings too.
+  This is a concrete control-parity gap; its audible contribution is untested.
+- Existing minimum/custom timing byte fixtures cover the 0.2 ms Attack and
+  2.5 ms Release endpoints as well as non-default timings. No unit-conversion
+  defect was identified in this trace.
+
+The user subsequently clarified that breakup occurs approximately at the
+lowest Attack settings and smooths out with longer Release. This makes rapid
+gain modulation the leading explanation: gain can change appreciably within
+individual waveform cycles and introduce harmonic or intermodulation
+distortion. This is a supported working explanation, not a measured diagnosis.
+It does not establish phone CPU overload, buffer underruns, bit-depth reduction,
+or phase incoherence, and it need not be confined to a transient's first cycle.
+
+No DSP timing range or USB timeout was changed. The existing minimum/custom
+encoding fixtures already cover the relevant values; this follow-up does not
+change the encoder. The separate preset-state/control-parity limitations above
+remain open and should not be conflated with distortion at settled settings.
+
+If further physical investigation is needed, the smallest useful comparison is
+the same steady source and monitoring path at minimum versus longer Attack,
+then minimum versus longer Release, with Threshold, Ratio, and Makeup held
+fixed and levels matched for listening. Record audio after each control has
+settled, paired with control-write/acknowledgement timestamps, sample rate, and
+monitoring path. Persistence at a fixed setting would distinguish the symptom
+from an edit-time discontinuity; audio capture is still needed to distinguish
+harmonic distortion from dropouts. No additional hardware test was performed.
+
 The earlier instrumented transport results follow.
 
 ## Setup
