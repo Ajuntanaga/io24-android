@@ -31,6 +31,7 @@ final class ParameterSlider extends LinearLayout {
     private final SeekBar seek;
     private Listener listener;
     private boolean rendering;
+    private boolean trackingTouch;
 
     ParameterSlider(
             Context context,
@@ -55,7 +56,6 @@ final class ParameterSlider extends LinearLayout {
         seek = Ui.seek(context, steps);
         seek.setContentDescription(name);
         seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            private boolean trackingTouch;
             @Override
             public void onProgressChanged(
                     SeekBar seekBar,
@@ -89,6 +89,9 @@ final class ParameterSlider extends LinearLayout {
     }
 
     void setValue(float value) {
+        if (trackingTouch) {
+            return;
+        }
         rendering = true;
         seek.setProgress(progressFromValue(value));
         valueLabel.setText(name + " " + formatter.format(value()));

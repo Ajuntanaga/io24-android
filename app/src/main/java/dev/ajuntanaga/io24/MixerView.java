@@ -39,6 +39,7 @@ final class MixerView implements ControllerView {
     private Io24State.Bus selectedBus = Io24State.Bus.MAIN;
     private Io24State lastState = Io24State.defaults();
     private boolean rendering;
+    private boolean trackingTouch;
 
     MixerView(Context context, CommandSink sink) {
         this.sink = sink;
@@ -176,6 +177,9 @@ final class MixerView implements ControllerView {
     @Override
     public void render(Io24State state) {
         lastState = state;
+        if (trackingTouch) {
+            return;
+        }
         boolean enabled = state.connectionStatus()
                 == Io24State.ConnectionStatus.CONNECTED && !state.busy();
         rendering = true;
@@ -214,7 +218,6 @@ final class MixerView implements ControllerView {
             IntAction changed,
             IntAction stopped) {
         return new SeekBar.OnSeekBarChangeListener() {
-            private boolean trackingTouch;
             @Override
             public void onProgressChanged(
                     SeekBar seekBar,

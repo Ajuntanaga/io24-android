@@ -29,6 +29,68 @@ public final class Io24ControllerReducerTest {
     }
 
     @Test
+    public void pollingCoalescesAndReflectsHardwareChangesWithoutBusyFlicker() {
+        QueuedExecutor worker = new QueuedExecutor();
+        SimulatedIo24Control.DeviceState device = new SimulatedIo24Control.DeviceState(false);
+        SimulatedIo24Control control = new SimulatedIo24Control(device, false);
+        Io24Controller controller = new Io24Controller(worker, DIRECT);
+        List<Io24State> snapshots = new ArrayList<>();
+        controller.setListener(snapshots::add);
+        controller.connect(() -> { control.connectAndRead(); return control; });
+        worker.runNext();
+        snapshots.clear();
+        device.apply(Io24Command.setGain(2, 31));
+        controller.poll();
+        controller.poll();
+        assertEquals(1, worker.work.size());
+        assertFalse(controller.state().busy());
+        worker.runNext();
+        assertEquals(31, controller.state().input(2).gainDb(), 0);
+        assertEquals(1, snapshots.size());
+        assertFalse(snapshots.get(0).busy());
+    }
+
+    @Test
+    public void queuedPollingYieldsToWritesAndNeverClearsTheirBusyState() {
+        QueuedExecutor worker = new QueuedExecutor();
+        SimulatedIo24Control control = new SimulatedIo24Control(
+                new SimulatedIo24Control.DeviceState(false), false);
+        Io24Controller controller = new Io24Controller(worker, DIRECT);
+        controller.connect(() -> { control.connectAndRead(); return control; });
+        worker.runNext();
+        controller.poll();
+        controller.dispatch(Io24Command.setGain(1, 24));
+        controller.poll();
+        assertEquals(2, worker.work.size());
+        worker.runNext();
+        assertTrue(controller.state().busy());
+        worker.runNext();
+        assertFalse(controller.state().busy());
+        assertEquals(24, controller.state().input(1).gainDb(), 0);
+    }
+
+    @Test
+    public void queuedPollAndStaleUiCallbacksCannotUndoDisconnect() {
+        QueuedExecutor worker = new QueuedExecutor();
+        QueuedExecutor callbacks = new QueuedExecutor();
+        SimulatedIo24Control control = new SimulatedIo24Control(
+                new SimulatedIo24Control.DeviceState(false), false);
+        Io24Controller controller = new Io24Controller(worker, callbacks);
+        List<Io24State> snapshots = new ArrayList<>();
+        controller.setListener(snapshots::add);
+        controller.connect(() -> { control.connectAndRead(); return control; });
+        worker.runNext();
+        controller.poll();
+        controller.disconnect();
+        while (!worker.work.isEmpty()) { worker.runNext(); }
+        while (!callbacks.work.isEmpty()) { callbacks.runNext(); }
+        assertEquals(1, snapshots.size());
+        assertEquals(Io24State.ConnectionStatus.DISCONNECTED,
+                snapshots.get(0).connectionStatus());
+        assertFalse(control.isConnected());
+    }
+
+    @Test
     public void connectDispatchRefreshAndDisconnectPublishOrderedSnapshots() {
         SimulatedIo24Control.DeviceState device =
                 new SimulatedIo24Control.DeviceState(false);

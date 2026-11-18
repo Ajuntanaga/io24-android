@@ -74,7 +74,7 @@ final class NativePreset {
 
         patchFilter(required(leaves, FILTER).payload, processing);
         patchGate(required(leaves, GATE).payload, processing, state.sampleRateHz());
-        patchCompressor(required(leaves, COMPRESSOR).payload, processing);
+        patchCompressor(required(leaves, COMPRESSOR).payload, processing, state.sampleRateHz());
         patchEq(required(leaves, EQ).payload, processing);
         patchLimiter(required(leaves, LIMITER).payload, processing,
                 state.sampleRateHz());
@@ -145,11 +145,13 @@ final class NativePreset {
 
     private static void patchCompressor(
             byte[] component,
-            Map<String, Float> values) {
+            Map<String, Float> values,
+            int sampleRateHz) {
         requireSize("compressor", component, 228);
-        List<byte[]> blobs = NativeDsp.standardCompressor(values);
+        List<byte[]> blobs = NativeDsp.compressor(values, sampleRateHz);
         for (int rate = 0; rate < RATES.length; rate++) {
-            System.arraycopy(blobs.get(0), 12, component, rate * 29 + 4, 20);
+            byte[] atRate = NativeDsp.compressor(values, Math.round(RATES[rate])).get(0);
+            System.arraycopy(atRate, 12, component, rate * 29 + 4, 20);
         }
         for (int index = 0; index < 2; index++) {
             System.arraycopy(blobs.get(index), 12, component,
@@ -160,14 +162,16 @@ final class NativePreset {
     private static void patchEq(byte[] component, Map<String, Float> values) {
         requireSize("equalizer", component, 432);
         for (int rate = 0; rate < RATES.length; rate++) {
-            List<byte[]> blobs = NativeDsp.standardEq(values, Math.round(RATES[rate]));
+            List<byte[]> blobs = NativeDsp.equalizer(values, Math.round(RATES[rate]));
+            Float selectedModel = values.get("eq_model");
+            boolean vintage = selectedModel != null && Math.round(selectedModel) == 2;
             int main = rate * 69 + 4;
-            System.arraycopy(blobs.get(1), 16, component, main, 20);
+            System.arraycopy(blobs.get(vintage ? 3 : 1), 16, component, main, 20);
             System.arraycopy(blobs.get(2), 16, component, main + 20, 20);
-            System.arraycopy(blobs.get(3), 16, component, main + 40, 20);
+            System.arraycopy(blobs.get(vintage ? 1 : 3), 16, component, main + 40, 20);
             int wide = 280 + rate * 37 + 4;
-            System.arraycopy(blobs.get(0), 16, component, wide, 20);
-            Arrays.fill(component, wide + 20, wide + 28, (byte) 0);
+            Arrays.fill(component, wide, wide + 28, (byte) 0);
+            System.arraycopy(blobs.get(0), 16, component, wide, blobs.get(0).length - 16);
         }
     }
 

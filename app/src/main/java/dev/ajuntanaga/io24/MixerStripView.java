@@ -19,6 +19,7 @@ final class MixerStripView extends LinearLayout {
     private final Switch solo;
     private Io24State.Bus bus = Io24State.Bus.MAIN;
     private boolean rendering;
+    private boolean trackingTouch;
 
     MixerStripView(Context context, Io24State.Source source, CommandSink sink) {
         super(context);
@@ -70,6 +71,9 @@ final class MixerStripView extends LinearLayout {
     }
 
     void render(Io24State state, Io24State.Bus selectedBus, boolean enabled) {
+        if (trackingTouch) {
+            return;
+        }
         bus = selectedBus;
         rendering = true;
         Io24State.Send send = state.send(source, bus);
@@ -87,7 +91,6 @@ final class MixerStripView extends LinearLayout {
             IntAction changed,
             IntAction stopped) {
         return new SeekBar.OnSeekBarChangeListener() {
-            private boolean trackingTouch;
             @Override
             public void onProgressChanged(
                     SeekBar seekBar,

@@ -106,7 +106,7 @@ final class EffectsView implements ControllerView {
         LinearLayout reverb = Ui.panel(context);
         reverb.addView(Ui.section(context, "Device reverb"), Ui.match());
         reverb.addView(Ui.caption(context,
-                "The io24's shared native reverb (block 202)."),
+                "Shared reverb returns through Main. Use Mixer → FX return for other mixes; keep input Processing mix above zero."),
                 Ui.match());
         reverbOn = Ui.toggle(context, "On");
         reverbOn.setContentDescription("Shared device reverb power");

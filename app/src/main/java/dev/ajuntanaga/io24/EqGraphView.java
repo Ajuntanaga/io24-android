@@ -31,6 +31,7 @@ final class EqGraphView extends TraceView {
     private float downY;
     private boolean dragged;
     private Listener listener;
+    private boolean alternateModel;
 
     EqGraphView(Context context) {
         super(context);
@@ -50,6 +51,10 @@ final class EqGraphView extends TraceView {
         setClickable(true);
     }
 
+    boolean isEditing() {
+        return activeBand >= 0;
+    }
+
     void setListener(Listener value) {
         listener = value;
     }
@@ -67,6 +72,7 @@ final class EqGraphView extends TraceView {
             boolean[] shelfValues,
             int rate,
             boolean allOn) {
+        alternateModel = false;
         frequencies = frequencyValues.clone();
         gainsDb = gainValues.clone();
         q = qValues.clone();
@@ -75,6 +81,15 @@ final class EqGraphView extends TraceView {
         sampleRateHz = rate > 0 ? rate : 48_000;
         setAlpha(allOn ? 1.0f : 0.55f);
         refreshTrace();
+    }
+
+    void setAlternateEq(float[][] coefficients, int rate, boolean allOn, String name) {
+        alternateModel = true;
+        activeBand = -1;
+        setAlpha(allOn ? 1.0f : 0.55f);
+        setTrace(GraphMath.eqCoefficientCurve(coefficients, rate,
+                Math.max(1, getWidth()), Ui.dp(getContext(), 120)),
+                name + " equalizer response. Adjust with the controls below.");
     }
 
     private void refreshTrace() {
@@ -89,6 +104,7 @@ final class EqGraphView extends TraceView {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
+        if (alternateModel) return;
         for (int band = 0; band < 4; band++) {
             float x = xForFrequency(frequencies[band]);
             float y = yForGain(gainsDb[band]);
@@ -105,7 +121,7 @@ final class EqGraphView extends TraceView {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        if (!isEnabled()) {
+        if (!isEnabled() || alternateModel) {
             return false;
         }
         switch (event.getActionMasked()) {

@@ -1,9 +1,33 @@
 # Android physical test record
 
-The current 0.3.6 controller has not yet sent its expanded control surface or
-native preset-block writer to a
-physical io24. The physical results below are the proven foundation from the
-earlier transport builds.
+## User report — 2026-11-17
+
+The user tested the installed app on their phone and reported that it works,
+including audible Transformer reverb. They also reported:
+
+- HPF cutoff remained effective with rack power off.
+- Gate lacked an Expander switch, and limiter lacked Release.
+- Compressor and EQ exposed only Standard, with the alternate models missing.
+- Standard compressor distortion changed with Attack and improved with a
+  longer Release. No captured audio or isolated reproduction is available.
+- Shared block-202 reverb controls produced no audible change.
+- Hardware edits needed manual refresh, input switches had excessive label
+  spacing, and FAT Channel needed one selectable rack at a time.
+
+The exact installed APK hash was not captured with this report. It is user
+observation, not an instrumented test. Transformer has its own private reverb
+core, which is separate from shared block 202.
+
+The 0.3.7 changes address the confirmed control, routing, and UI defects and add
+regression tests. It adds Tube/FET compression and Passive/Vintage EQ with
+model-specific controls, live encoders, response graphs, and preset support.
+This repair build has not been installed on the phone or
+used with the physical io24. HPF bypass, block-202 audibility, automatic
+readback, alternate-model switching (including alternate EQ back to Standard),
+and the compressor issue still need physical acceptance. AutoGain
+remains unavailable; no inactive firmware control was added in its place.
+
+The earlier instrumented transport results follow.
 
 ## Setup
 

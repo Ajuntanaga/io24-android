@@ -118,9 +118,6 @@ public final class Io24Protocol {
             case SET_PRESET_ENABLED:
                 return integerWrite(uid, command.channel() - 1, 4,
                         command.toggle() ? 1 : 0);
-            case SET_HIGH_PASS:
-                return integerWrite(uid, command.channel() - 1, 5,
-                        command.toggle() ? 1 : 0);
             case SET_HEADPHONE_MUTE:
                 return integerWrite(uid, 0, 6, command.toggle() ? 1 : 0);
             case SET_INPUT_MUTE:
@@ -217,6 +214,10 @@ public final class Io24Protocol {
                 return mirrorMainWrites(after, command.bus(), command.toggle());
             case SET_MIXER_PAN:
                 return Collections.emptyList();
+            case SET_HIGH_PASS:
+                // The app's power and cutoff operate the same FAT Channel biquad.
+                // Scalar input HPF (Pari 5) is a separate filter path.
+                return processingWrites(after, command.channel(), "hpf_on");
             case SET_PROCESSING_PARAMETER:
                 return processingWrites(after, command.channel(), command.parameter());
             case SET_VOICE_FX_MODEL:
@@ -257,12 +258,22 @@ public final class Io24Protocol {
                         before.sampleRateHz()));
                 return reassignment;
             case SET_REVERB:
-                return List.of(new NativeWrite(
+                List<NativeWrite> reverb = new ArrayList<>();
+                if (after.reverb().on() && !before.reverb().on()) {
+                    // Linux establishes the Main return before arming block 202.
+                    // Apply the app's existing route (default 0 dB), preserving
+                    // explicit assignment, mute, solo and bus trim. Slider edits
+                    // must not reopen routes, and input processing mix is separate.
+                    reverb.add(mixerWrite(after, Io24State.Source.FX_RETURN,
+                            Io24State.Bus.MAIN, Io24State.Bus.MAIN));
+                }
+                reverb.add(new NativeWrite(
                         NativeDsp.BLOCK_REVERB,
                         0,
                         NativeDsp.reverb(after.reverb(), before.sampleRateHz()),
                         0,
                         "Shared reverb"));
+                return reverb;
             case SAVE_DEVICE_BLOCK:
                 int block = Math.round(command.value());
                 int absoluteSlot = (command.channel() - 1) * 2 + block;
@@ -353,11 +364,16 @@ public final class Io24Protocol {
         int blockIndex = channel - 1;
         List<NativeWrite> result = new ArrayList<>();
         if (parameter.startsWith("hpf_")) {
+            // Older Android builds controlled a separate input filter with Pari 5.
+            // Clear it only on an explicit HPF gesture, before applying the FAT
+            // filter, so both power controls and cutoff own one audible filter.
+            result.add(scalarNative(blockIndex, 5, 0, true,
+                    "Clear legacy input high-pass"));
             result.add(new NativeWrite(
                     NativeDsp.BLOCK_FILTER,
                     blockIndex,
                     NativeDsp.highPassFilter(
-                            true,
+                            values.value("hpf_on", 0) >= 0.5f,
                             values.value("hpf_hz", 80),
                             state.sampleRateHz()),
                     0,
@@ -367,12 +383,8 @@ public final class Io24Protocol {
                     NativeDsp.gate(values.values, state.sampleRateHz()),
                     "Fat Channel gate");
         } else if (parameter.startsWith("compressor_")) {
-            if (Math.round(values.value("compressor_model", 0)) != 0) {
-                throw new IllegalArgumentException(
-                        "Android currently exposes the proven Standard compressor controls");
-            }
             addBlobs(result, NativeDsp.BLOCK_COMPRESSOR, blockIndex,
-                    NativeDsp.standardCompressor(values.values),
+                    NativeDsp.compressor(values.values, state.sampleRateHz()),
                     "Fat Channel compressor");
         } else if (parameter.startsWith("limiter_")) {
             addBlobs(result, NativeDsp.BLOCK_LIMITER, blockIndex,
@@ -386,12 +398,8 @@ public final class Io24Protocol {
                     0,
                     "Fat Channel order"));
         } else if (parameter.startsWith("eq_")) {
-            if (Math.round(values.value("eq_model", 0)) != 0) {
-                throw new IllegalArgumentException(
-                        "Passive and Vintage EQ are not yet supported on Android; use the Linux Host");
-            }
             addBlobs(result, NativeDsp.BLOCK_EQ, blockIndex,
-                    NativeDsp.standardEq(values.values, state.sampleRateHz()),
+                    NativeDsp.equalizer(values.values, state.sampleRateHz()),
                     "Fat Channel EQ");
         } else {
             throw new IllegalArgumentException(

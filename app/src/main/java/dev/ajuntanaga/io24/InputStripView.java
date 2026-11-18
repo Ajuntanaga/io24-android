@@ -2,6 +2,7 @@ package dev.ajuntanaga.io24;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.view.Gravity;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.Switch;
@@ -21,6 +22,7 @@ final class InputStripView extends LinearLayout {
     private final TextView fxMixValue;
     private final SeekBar fxMix;
     private boolean rendering;
+    private boolean trackingTouch;
 
     InputStripView(Context context, int channel, CommandSink sink) {
         super(context);
@@ -54,7 +56,7 @@ final class InputStripView extends LinearLayout {
                 sink.dispatch(Io24Command.setPhantom(channel, checked));
             }
         });
-        toggles.addView(phantom, largeText ? Ui.match() : Ui.weight(1));
+        addCompactToggle(toggles, phantom, largeText);
         highPass = Ui.toggle(context, "HPF");
         highPass.setContentDescription("Input " + channel + " high-pass power");
         highPass.setOnCheckedChangeListener((button, checked) -> {
@@ -62,7 +64,7 @@ final class InputStripView extends LinearLayout {
                 sink.dispatch(Io24Command.setHighPass(channel, checked));
             }
         });
-        toggles.addView(highPass, largeText ? Ui.match() : Ui.weight(1));
+        addCompactToggle(toggles, highPass, largeText);
         mute = Ui.toggle(context, "Mute");
         mute.setContentDescription("Input " + channel + " mute");
         mute.setOnCheckedChangeListener((button, checked) -> {
@@ -70,7 +72,7 @@ final class InputStripView extends LinearLayout {
                 sink.dispatch(Io24Command.setInputMute(channel, checked));
             }
         });
-        toggles.addView(mute, largeText ? Ui.match() : Ui.weight(1));
+        addCompactToggle(toggles, mute, largeText);
         addView(toggles, Ui.match());
 
         fxMixValue = Ui.label(context, "Processing 100%");
@@ -84,6 +86,9 @@ final class InputStripView extends LinearLayout {
     }
 
     void render(Io24State state, boolean enabled) {
+        if (trackingTouch) {
+            return;
+        }
         rendering = true;
         Io24State.Input input = state.input(channel);
         gain.setProgress(Math.round(input.gainDb() * 2.0f));
@@ -98,11 +103,19 @@ final class InputStripView extends LinearLayout {
         Ui.enabledTree(this, enabled);
     }
 
+    private void addCompactToggle(LinearLayout row, Switch toggle, boolean stacked) {
+        LinearLayout cell = Ui.row(getContext());
+        cell.setGravity(stacked ? Gravity.START : Gravity.CENTER);
+        toggle.setSwitchPadding(Ui.dp(getContext(), 6));
+        cell.addView(toggle, new LinearLayout.LayoutParams(
+                LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
+        row.addView(cell, stacked ? Ui.match() : Ui.weight(1));
+    }
+
     private SeekBar.OnSeekBarChangeListener onStop(
             IntAction stopped,
             IntAction changed) {
         return new SeekBar.OnSeekBarChangeListener() {
-            private boolean trackingTouch;
             @Override
             public void onProgressChanged(
                     SeekBar seekBar,

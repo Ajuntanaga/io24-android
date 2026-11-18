@@ -5,7 +5,6 @@ import android.content.Context;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.Switch;
@@ -24,17 +23,14 @@ final class DeviceView implements ControllerView {
     private final Switch muteSync;
     private final TextView hardwareMute;
     private final TextView diagnostics;
-    private final Button refresh;
-    private final Runnable refreshAction;
     private boolean rendering;
     // Spinner selection callbacks may arrive after render() returns.
     private int renderedRatePosition;
     private int renderedDelayPosition;
     private int renderedPhonePosition;
 
-    DeviceView(Context context, CommandSink sink, Runnable refreshAction) {
+    DeviceView(Context context, CommandSink sink) {
         this.sink = sink;
-        this.refreshAction = refreshAction;
         LinearLayout content = Ui.column(context);
         content.setPadding(Ui.dp(context, 16), Ui.dp(context, 12),
                 Ui.dp(context, 16), Ui.dp(context, 24));
@@ -156,9 +152,9 @@ final class DeviceView implements ControllerView {
         diagnostics = Ui.caption(context, "Not connected");
         diagnostics.setTextIsSelectable(true);
         evidence.addView(diagnostics, Ui.match());
-        refresh = Ui.button(context, "Refresh device state");
-        refresh.setOnClickListener(view -> this.refreshAction.run());
-        evidence.addView(refresh, Ui.spaced(context));
+        evidence.addView(Ui.caption(context,
+                "Device controls update automatically while this app is open."),
+                Ui.spaced(context));
         content.addView(evidence, Ui.spaced(context));
         root = Ui.scroll(context, content);
     }
@@ -209,7 +205,6 @@ final class DeviceView implements ControllerView {
         Ui.enabledTree(outputDelay, enabled);
         phoneSource.setEnabled(enabled);
         muteSync.setEnabled(enabled);
-        refresh.setEnabled(enabled);
     }
 
     private static String diagnostics(Io24State state) {

@@ -278,6 +278,7 @@ final class NativeDsp {
             result.add(gateBlob(
                     index,
                     bool(values, "gate_on", false),
+                    bool(values, "gate_expander", true),
                     value(values, "gate_threshold", -48),
                     value(values, "gate_range", -48),
                     value(values, "gate_attack", 0.005f),
@@ -290,6 +291,7 @@ final class NativeDsp {
     private static byte[] gateBlob(
             int index,
             boolean on,
+            boolean expander,
             float thresholdDb,
             float rangeDb,
             float attackSeconds,
@@ -302,7 +304,7 @@ final class NativeDsp {
         float threshold = dbToInverseLinear(thresholdDb);
         float attackCoefficient = f32(Math.exp(f32(
                 f32(f32(-TWO_PI_F / attack) / rate))));
-        float kRelease = release; // expander mode uses k=1.0
+        float kRelease = f32((expander ? 1.0f : 0.5f) * release);
         float releaseCoefficient = f32(Math.exp(f32(
                 f32(f32(-TWO_PI_F / kRelease) / rate))));
         int hold = Math.max(1, (int) Math.ceil(f32(
@@ -314,9 +316,83 @@ final class NativeDsp {
         result.putFloat(attackCoefficient).putFloat(releaseCoefficient);
         result.putInt(hold);
         result.putInt(on ? 1 : 0);
-        result.putInt(1); // expander mode
+        result.putInt(expander ? 1 : 0);
         result.putInt(0); // key listen
         return result.array();
+    }
+
+    /** All three host models compile to the same two CPXT instances.
+     * Ported from Linux io24_dsp.py cpxt_tube/cpxt_fet, preserving float order.
+     */
+    static List<byte[]> compressor(Map<String, Float> values, int sampleRateHz) {
+        int model = Math.round(value(values, "compressor_model", 0));
+        if (model == 0) {
+            return standardCompressor(values);
+        }
+        if (model != 1 && model != 2) {
+            throw new IllegalArgumentException("Unknown compressor model " + model);
+        }
+        float[] sidechain = IDENTITY;
+        float attack;
+        float release;
+        float slope;
+        float knee;
+        float threshold;
+        float makeup;
+        if (model == 1) {
+            float peak = value(values, "compressor_tube_peak", 0);
+            float k = bool(values, "compressor_tube_limit_mode", false)
+                    ? 0.0833333358168602f : 0.0555555559694767f;
+            threshold = 1.0f - peak * 0.5f;
+            slope = peak > 0 ? 1.0f - 1.0f / (peak * k + 2.5f) : 1.0f;
+            attack = peak * 0.0005000000237487257f + 0.019999999552965164f;
+            release = 0.3799999952316284f;
+            knee = 3.0f;
+            makeup = dbToLinear((value(values, "compressor_tube_gain", 40) - 40) * 0.5f);
+            // Designer type 11 uses w0, not sin(w0), for alpha.
+            double w0 = 2.0 * 15000.0 * (Math.PI / sampleRateHz);
+            double alpha = 0.5 * w0 / 0.5;
+            double a = Math.pow(10, 7.0 * 0.025);
+            double norm = a / (a + alpha);
+            double c2 = 2.0 * Math.cos(w0);
+            sidechain = new float[] {
+                    f32((1.0 + a * alpha) * norm) * 0.5f,
+                    f32(c2 * norm),
+                    f32(-(c2 * norm)) * 0.5f,
+                    f32(-((1.0 - alpha / a) * norm)),
+                    f32((1.0 - a * alpha) * norm) * 0.5f};
+        } else {
+            int ratio = Math.max(0, Math.min(4, Math.round(
+                    value(values, "compressor_fet_ratio_index", 0))));
+            float[] ratios = {6.5f, 9.899999618530273f, 14, 22, 20};
+            float[] thresholdOffsets = {3.75f, 2, 1.100000023841858f, 0, 2};
+            float[] gainOffsets = {-3, -1.7000000476837158f,
+                    -1.2000000476837158f, 0, -1.7000000476837158f};
+            attack = value(values, "compressor_fet_attack", 0.0001f)
+                    * (ratio == 4 ? 5.0f : 1.0f);
+            release = value(values, "compressor_fet_release", 0.25f) * 10.0f;
+            slope = 1.0f - 1.0f / ratios[ratio];
+            knee = 2.5f;
+            float input = -40.0f - value(values, "compressor_fet_input", -43);
+            threshold = (input * input) * 0.007860999554395676f
+                    + input * 1.5199999809265137f;
+            threshold = threshold + 6.130000114440918f - thresholdOffsets[ratio];
+            float output = value(values, "compressor_fet_output", 0);
+            float gain = (output * 0.005727000068873167f + 1.434999942779541f) * output;
+            gain = gain + 6.591000080108643f;
+            gain = ((gain - threshold) + 4.0f) + gainOffsets[ratio];
+            makeup = dbToLinear(gain);
+        }
+        List<byte[]> result = new ArrayList<>();
+        for (int index = 0; index < 2; index++) {
+            ByteBuffer blob = blob(TAG_CPXT, 0x40, index);
+            putFloats(blob, sidechain);
+            blob.putFloat(attack).putFloat(release).putFloat(slope).putFloat(knee);
+            blob.putFloat(threshold).putFloat(makeup);
+            blob.putInt(bool(values, "compressor_on", false) ? 1 : 0).putInt(0);
+            result.add(blob.array());
+        }
+        return result;
     }
 
     static List<byte[]> standardCompressor(Map<String, Float> values) {
@@ -370,7 +446,7 @@ final class NativeDsp {
                     : Float.intBitsToFloat(0x3faab0d5));
             blob.putFloat(on
                     ? f32(Math.exp(f32(-TWO_PI_F
-                            / f32(0.4f * sampleRateHz))))
+                            / f32(value(values, "limiter_release", 0.4f) * sampleRateHz))))
                     : 0.0f);
             result.add(blob.array());
         }
@@ -387,7 +463,84 @@ final class NativeDsp {
         result.putFloat(dbToInverseLinear(
                 value(values, "limiter_threshold", -1)));
         result.putFloat(f32(Math.exp(f32(-TWO_PI_F
-                / f32(0.4f * sampleRateHz)))));
+                / f32(value(values, "limiter_release", 0.4f) * sampleRateHz)))));
+        return result.array();
+    }
+
+    /** Live order: wide section, then three biquads. Vintage reverses the
+     * low-mid/high order relative to the native preset table. */
+    static float[][] eqSections(Map<String, Float> values, int sampleRateHz) {
+        if (sampleRateHz <= 0 || sampleRateHz > 176400) {
+            throw new IllegalArgumentException("Unsupported EQ sample rate");
+        }
+        int model = Math.round(value(values, "eq_model", 0));
+        if (model == 0) {
+            List<byte[]> blobs = standardEq(values, sampleRateHz);
+            float[][] result = new float[4][5];
+            for (int band = 0; band < 4; band++) {
+                ByteBuffer bytes = ByteBuffer.wrap(blobs.get(band)).order(ByteOrder.LITTLE_ENDIAN);
+                for (int i = 0; i < 5; i++) result[band][i] = bytes.getFloat(16 + 4 * i);
+            }
+            return result;
+        }
+        if (model != 1 && model != 2) throw new IllegalArgumentException("Unknown EQ model");
+        if (!bool(values, "eq_on", false)) {
+            return new float[][] { {1, 0, 0, 0, 0, 0, 0},
+                    IDENTITY.clone(), IDENTITY.clone(), IDENTITY.clone() };
+        }
+        if (model == 1) {
+            String p = "eq_passive_";
+            return new float[][] {
+                NativeEq.passiveHigh(Math.round(value(values, p + "high_frequency_index", 4)),
+                        value(values, p + "high_boost", 1.5f),
+                        value(values, p + "high_attenuation", 1.5f),
+                        Math.round(value(values, p + "attenuation_frequency_index", 2)),
+                        value(values, p + "bandwidth", 10), sampleRateHz),
+                NativeEq.passiveLow(Math.round(value(values, p + "low_frequency_index", 0)),
+                        value(values, p + "low_boost", 0),
+                        value(values, p + "low_attenuation", 0), sampleRateHz),
+                IDENTITY.clone(), IDENTITY.clone()
+            };
+        }
+        String p = "eq_vintage_";
+        return new float[][] {
+            NativeEq.vintage("low", Math.round(value(values, p + "low_frequency_index", 1)),
+                    value(values, p + "low_gain", 0), sampleRateHz),
+            NativeEq.vintage("high", 0, value(values, p + "high_gain", 0), sampleRateHz),
+            NativeEq.vintage("hi-mid", Math.round(value(values, p + "himid_frequency_index", 2)),
+                    value(values, p + "himid_gain", 0), sampleRateHz),
+            NativeEq.vintage("low-mid", Math.round(value(values, p + "lowmid_frequency_index", 2)),
+                    value(values, p + "lowmid_gain", 0), sampleRateHz)
+        };
+    }
+
+    static List<byte[]> equalizer(Map<String, Float> values, int sampleRateHz) {
+        float[][] sections = eqSections(values, sampleRateHz);
+        List<byte[]> result = new ArrayList<>();
+        for (int band = 0; band < sections.length; band++) {
+            result.add(sections[band].length == 7
+                    ? wideEqBlob(band, sections[band]) : biquadBlob(band, sections[band]));
+        }
+        return result;
+    }
+
+    static byte[] wideEqBlob(int band, float[] coefficients) {
+        if (coefficients.length != 7) throw new IllegalArgumentException("Wide EQ requires seven coefficients");
+        for (float coefficient : coefficients) {
+            if (!Float.isFinite(coefficient)) throw new IllegalArgumentException("Non-finite EQ coefficient");
+        }
+        double[] polynomial = {1, -coefficients[1], -coefficients[3], -coefficients[5]};
+        while (polynomial.length > 1) {
+            int degree = polynomial.length - 1;
+            double first = polynomial[0], last = polynomial[degree];
+            if (Math.abs(last) >= Math.abs(first)) throw new IllegalArgumentException("Unstable wide EQ");
+            double[] next = new double[degree];
+            for (int i = 0; i < degree; i++) next[i] = first * polynomial[i] - last * polynomial[degree - i];
+            polynomial = next;
+        }
+        ByteBuffer result = blob(0x4c666466, 0x2c, 0);
+        result.putInt(band);
+        putFloats(result, coefficients);
         return result.array();
     }
 

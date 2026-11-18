@@ -1,5 +1,84 @@
 # Android controller build report
 
+## 0.3.7 repair build — 2026-11-17
+
+This build responds to the user's phone test: HPF bypass, missing dynamics and
+EQ controls, automatic hardware readback, shared-reverb routing, and FAT Channel
+navigation. It has not been installed on the physical phone.
+
+### Artifact and verification
+
+- APK: `app/build/outputs/apk/debug/app-debug.apk`
+- SHA-256: `b0a490b59c30d6bb1792d1b15b099f629f228e8b90b98e9b45b8ce82b60904fa`
+- Size: 1,154,344 bytes
+- Version: `0.3.7` (`versionCode` 12), Android debug signing
+- Java unit tests: 96 passed, zero failed or skipped
+- Host repository contracts: 25 passed
+- Android lint: zero errors; existing `OldTargetApi` and `GradleDependency` warnings
+- Offline debug APK assembly: passed; one Gradle worker, two active JVM processors
+
+The EQ tests include 808 independent coefficient fixtures derived from the
+Linux UC instruction interpreter. Standard, Passive, and Vintage coefficients
+and four-rate preset layouts are covered, including the Vintage preset band
+ordering. Tube and FET compressor live commands and four-rate preset records
+match the Linux reference. Model changes retain each model's controls.
+
+### Emulator checks
+
+The repair APK installed and launched on the API 35 emulator at 720 × 1600,
+320 dpi, using two CPU cores and two software-renderer threads. Visual checks
+covered compact input switches, one-rack FAT navigation, all three EQ and
+compressor models, lower controls, 130% text size, and landscape scrolling.
+Passive EQ retained its edited boost after switching to Vintage and back;
+Tube retained Peak Reduction after a FET switch. The Passive response graph
+changed with its controls. Labels and selectors remained readable in the
+checked layouts. The crash log was empty. Display settings were restored and
+the emulator was stopped after verification. These checks used the simulated
+device; they do not establish audio behavior on the physical io24.
+
+### Repairs
+
+- HPF power now bypasses the programmable filter while retaining its cutoff.
+  Explicit HPF edits clear the old scalar HPF so the two filters do not cascade.
+  Connection and automatic polling do not change the HPF.
+- Gate exposes Expander; limiter exposes Release.
+- Compressor exposes Standard, Tube, and FET with their own controls.
+- EQ exposes Standard, Passive, and Vintage with their own controls and actual
+  coefficient response graphs. Standard retains draggable frequency/gain nodes.
+- FAT Channel module buttons show one rack at a time; input switches use compact
+  label spacing.
+- Foreground polling replaces Refresh, coalesces reads, and protects local edits
+  from stale replies. Hardware following covers fields available in the state
+  reply; it cannot infer all effect parameters or the selected DSP model.
+- Enabling block-202 reverb restores the shared FX return to MAIN while retaining
+  its trim, mute, solo, and assignment state. Parameter edits do not overwrite
+  input mixes. All six block-201 Voice FX encodings match the Linux reference;
+  Transformer's coupled low/private-reverb values are intentional in that mapping.
+
+### Publication audit — 2026-11-17
+
+A bounded code audit found no blocking defects in DSP command encoding, HPF
+bypass, effect-return routing, compressor/EQ model selection and preset layouts,
+or in foreground polling, lifecycle handling, stale-reply protection, and
+active-edit protection. The audit was read-only and did not access hardware.
+The 25 host repository checks passed again before publication; the existing
+96-test, lint, APK, and emulator results above remain the build verification.
+Patch details are recorded in `CHANGELOG.md` under 0.3.7.
+
+### Remaining physical checks
+
+HPF audibility, shared block-202 reverb, hardware knob following, and switching
+alternate models back to Standard need physical acceptance. The reported
+Standard-compressor distortion has no isolated reproduction yet; this build
+makes no claim to repair its audible cause. The phone sends control messages,
+while audio processing runs on the io24. AutoGain remains a Linux host feedback
+loop and has not been ported to Android.
+
+## Historical 0.3.6 report
+
+The record below describes the previous build. Its Standard-only model limits,
+manual Refresh workflow, and HPF cutoff behavior are superseded by 0.3.7 above.
+
 Clean offline build completed on 2026-11-03.
 
 ## Artifact

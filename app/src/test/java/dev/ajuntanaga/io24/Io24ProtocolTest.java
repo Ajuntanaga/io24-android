@@ -33,7 +33,6 @@ public final class Io24ProtocolTest {
         assertScalar(Io24Command.setFxMix(2, 0.8f), false, 1, 4);
         assertScalar(Io24Command.setMonitorBlend(-0.5f), false, 0, 10);
         assertScalar(Io24Command.setOutputDelay(0.05f), false, 0, 14);
-        assertScalar(Io24Command.setHighPass(2, true), true, 1, 5);
         assertScalar(Io24Command.setInputMute(1, true), true, 0, 7);
         assertScalar(Io24Command.setHeadphoneMute(true), true, 0, 6);
         assertScalar(Io24Command.setLinked(true), true, 0, 9);
@@ -46,7 +45,7 @@ public final class Io24ProtocolTest {
     }
 
     @Test
-    public void cutoffProgramsTheSameFilterWhilePowerIsOffOrOn() {
+    public void cutoffHonorsTheFatChannelBypass() {
         Io24State off = Io24State.defaults().buildUpon()
                 .setInputHighPass(1, false)
                 .build();
@@ -56,12 +55,91 @@ public final class Io24ProtocolTest {
         Io24Command cutoff = Io24Command.setProcessingParameter(
                 1, "hpf_hz", 406.0f);
 
+        byte[] legacyClear = Io24Protocol.encodeTransaction(cutoff, off, 9)
+                .writes().get(0).frame();
+        assertEquals(0, intAt(legacyClear, 28));
+        assertEquals(5, intAt(legacyClear, 32));
+        assertEquals(0, intAt(legacyClear, 36));
         byte[] whileOff = Io24Protocol.encodeTransaction(cutoff, off, 9)
-                .writes().get(0).frame();
+                .writes().get(1).frame();
         byte[] whileOn = Io24Protocol.encodeTransaction(cutoff, on, 9)
-                .writes().get(0).frame();
+                .writes().get(1).frame();
 
-        assertArrayEquals(whileOn, whileOff);
+        assertArrayEquals(PaeFrame.buildBlockWrite(10, NativeDsp.BLOCK_FILTER, 0,
+                NativeDsp.highPassFilter(false, 406, 48000)), whileOff);
+        assertArrayEquals(PaeFrame.buildBlockWrite(10, NativeDsp.BLOCK_FILTER, 0,
+                NativeDsp.highPassFilter(true, 406, 48000)), whileOn);
+        assertFalse(java.util.Arrays.equals(whileOn, whileOff));
+    }
+
+    @Test
+    public void highPassPowerRestoresCutoffAndNeverEnablesASecondFilter() {
+        Io24State before = Io24State.defaults().buildUpon()
+                .setProcessingParameter(2, "hpf_hz", 406).build();
+        for (boolean on : new boolean[] {true, false}) {
+            Io24Protocol.Transaction tx = Io24Protocol.encodeTransaction(
+                    Io24Command.setHighPass(2, on), before, 255);
+            assertEquals(2, tx.writes().size());
+            assertEquals(2, tx.nextUid());
+            byte[] clear = tx.writes().get(0).frame();
+            assertEquals(0x4170706c, intAt(clear, 12));
+            assertEquals(0x50617269, intAt(clear, 20));
+            assertEquals(1, intAt(clear, 28));
+            assertEquals(5, intAt(clear, 32));
+            assertEquals(0, intAt(clear, 36));
+            assertArrayEquals(PaeFrame.buildBlockWrite(1, NativeDsp.BLOCK_FILTER, 1,
+                    NativeDsp.highPassFilter(on, 406, 48000)), tx.writes().get(1).frame());
+            Io24State after = Io24StateReducer.apply(before, Io24Command.setHighPass(2, on));
+            assertEquals(406, after.processing(2).get("hpf_hz"), 0);
+            assertEquals(on, after.input(2).highPass());
+        }
+    }
+
+    @Test
+    public void reverbEnableEstablishesMainReturnBeforeEngineWithoutChangingInputMix() {
+        Io24State before = Io24State.defaults();
+        Io24Command enable = Io24Command.setReverb(true, 0.6f, 0.4f, 150, 0.02f);
+        Io24Protocol.Transaction tx = Io24Protocol.encodeTransaction(enable, before, 255);
+        assertEquals(2, tx.writes().size());
+        assertArrayEquals(PaeFrame.buildBlockWrite(255, NativeDsp.BLOCK_MIXER, 0,
+                NativeDsp.mixerLevel(5, 0)), tx.writes().get(0).frame());
+        assertEquals(NativeDsp.BLOCK_REVERB, intAt(tx.writes().get(1).frame(), 12));
+        assertEquals(2, tx.nextUid());
+        Io24State on = Io24StateReducer.apply(before, enable);
+        assertEquals(before.input(1).fxMix(), on.input(1).fxMix(), 0);
+        assertEquals(before.input(2).fxMix(), on.input(2).fxMix(), 0);
+        // Normal edits and bypass do not overwrite mixer routes.
+        for (boolean enabled : new boolean[] {true, false}) {
+            Io24Protocol.Transaction edit = Io24Protocol.encodeTransaction(
+                    Io24Command.setReverb(enabled, 0.7f, 0.5f, 170, 0.03f), on, 8);
+            assertEquals(1, edit.writes().size());
+            assertEquals(NativeDsp.BLOCK_REVERB, intAt(edit.writes().get(0).frame(), 12));
+        }
+    }
+
+    @Test
+    public void reverbEnableRespectsReturnTrimMuteAssignmentAndSolo() {
+        Io24State initial = Io24State.defaults();
+        Io24State trimmed = Io24StateReducer.apply(initial, Io24Command.setMixerSend(
+                Io24State.Source.FX_RETURN, Io24State.Bus.MAIN, -9));
+        trimmed = Io24StateReducer.apply(trimmed, Io24Command.setBusMaster(Io24State.Bus.MAIN, -3));
+        Io24State[] states = {
+                trimmed,
+                initial.buildUpon().setMixerFlags(Io24State.Source.FX_RETURN,
+                        Io24State.Bus.MAIN, true, false).build(),
+                Io24StateReducer.apply(initial, Io24Command.setMixerAssigned(
+                        Io24State.Source.FX_RETURN, Io24State.Bus.MAIN, false)),
+                initial.buildUpon().setBus(Io24State.Bus.MAIN, 0, true, false).build(),
+                initial.buildUpon().setMixerFlags(Io24State.Source.INPUT_1,
+                        Io24State.Bus.MAIN, false, true).build()
+        };
+        for (int index = 0; index < states.length; index++) {
+            Io24Protocol.Transaction tx = Io24Protocol.encodeTransaction(
+                    Io24Command.setReverb(true, 0.5f, 0.3f, 100, 0.01f), states[index], 1);
+            assertEquals(2, tx.writes().size());
+            assertArrayEquals(PaeFrame.buildBlockWrite(1, NativeDsp.BLOCK_MIXER, 0,
+                    NativeDsp.mixerLevel(5, index == 0 ? -12 : -145)), tx.writes().get(0).frame());
+        }
     }
 
     @Test

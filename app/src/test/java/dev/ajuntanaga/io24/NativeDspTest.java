@@ -118,6 +118,28 @@ public final class NativeDspTest {
     }
 
     @Test
+    public void compressorFastAndCustomTimingsMatchIndependentLinuxVectors() {
+        Io24State minimum = Io24State.defaults().buildUpon()
+                .setProcessingParameter(1, "compressor_on", 1)
+                .setProcessingParameter(1, "compressor_threshold", -56)
+                .setProcessingParameter(1, "compressor_ratio", 1)
+                .setProcessingParameter(1, "compressor_attack", 0.0002f)
+                .setProcessingParameter(1, "compressor_release", 0.0025f).build();
+        assertEquals("7478706340000000000000000000803f00000000000000000000000000000000"
+                        + "17b751390ad7233b000000000ad7233c000060c20000803f0100000000000000",
+                hex(NativeDsp.standardCompressor(minimum.processing(1)).get(0)));
+        Io24State custom = minimum.buildUpon()
+                .setProcessingParameter(1, "compressor_threshold", -18.25f)
+                .setProcessingParameter(1, "compressor_ratio", 7.5f)
+                .setProcessingParameter(1, "compressor_attack", 0.0037f)
+                .setProcessingParameter(1, "compressor_release", 0.417f)
+                .setProcessingParameter(1, "compressor_gain", 6.25f).build();
+        assertEquals("7478706340000000010000000000803f00000000000000000000000000000000"
+                        + "b37b723b0681d53ededd5d3f0ad7233c000092c1f46c03400100000000000000",
+                hex(NativeDsp.standardCompressor(custom.processing(1)).get(1)));
+    }
+
+    @Test
     public void standardEqLimiterAndHighPassMatchUcDerivedVectors()
             throws Exception {
         Io24State.Builder builder = Io24State.defaults().buildUpon()
@@ -191,6 +213,40 @@ public final class NativeDspTest {
         assertEquals(0.0f, littleEndianFloat(powerChanged.get(3), 24), 0.0f);
         assertEquals(0.0f, littleEndianFloat(powerChanged.get(3), 28), 0.0f);
         assertEquals(0.0f, littleEndianFloat(powerChanged.get(3), 32), 0.0f);
+    }
+
+    @Test
+    public void gateModeChangesFlagAndReleaseEnvelopeWithoutChangingThreshold() {
+        Io24State expander = Io24State.defaults().buildUpon()
+                .setProcessingParameter(1, "gate_on", 1).build();
+        Io24State gate = expander.buildUpon()
+                .setProcessingParameter(1, "gate_expander", 0).build();
+        byte[] exp = NativeDsp.gate(expander.processing(1), 48000).get(0);
+        byte[] normal = NativeDsp.gate(gate.processing(1), 48000).get(0);
+        assertEquals(1, ByteBuffer.wrap(exp).order(ByteOrder.LITTLE_ENDIAN).getInt(64));
+        assertEquals(0, ByteBuffer.wrap(normal).order(ByteOrder.LITTLE_ENDIAN).getInt(64));
+        assertEquals(littleEndianFloat(exp, 36), littleEndianFloat(normal, 36), 0);
+        assertEquals(littleEndianFloat(exp, 44), littleEndianFloat(normal, 44), 0);
+        // UC: k=1 for Expander, k=.5 for Gate; hold=ceil(k*release*fs/2).
+        assertEquals(16800, ByteBuffer.wrap(exp).order(ByteOrder.LITTLE_ENDIAN).getInt(56));
+        assertEquals(8400, ByteBuffer.wrap(normal).order(ByteOrder.LITTLE_ENDIAN).getInt(56));
+        org.junit.Assert.assertTrue(littleEndianFloat(normal, 52) < littleEndianFloat(exp, 52));
+    }
+
+    @Test
+    public void limiterReleaseIsEncodedInRuntimeAndSavedPresetEvenWhileBypassed() {
+        Io24State fast = Io24State.defaults().buildUpon()
+                .setProcessingParameter(1, "limiter_on", 1)
+                .setProcessingParameter(1, "limiter_release", 0.05f).build();
+        Io24State slow = fast.buildUpon()
+                .setProcessingParameter(1, "limiter_release", 1.5f).build();
+        float fastCoefficient = littleEndianFloat(NativeDsp.limiter(fast.processing(1), 48000).get(0), 20);
+        float slowCoefficient = littleEndianFloat(NativeDsp.limiter(slow.processing(1), 48000).get(0), 20);
+        org.junit.Assert.assertTrue(fastCoefficient < slowCoefficient);
+        assertEquals((float) Math.exp(-2 * Math.PI / (0.05 * 48000)), fastCoefficient, 0.0000001f);
+        Io24State bypassed = slow.buildUpon().setProcessingParameter(1, "limiter_on", 0).build();
+        assertEquals(slowCoefficient, littleEndianFloat(
+                NativeDsp.limiterPresetState(bypassed.processing(1), 48000), 8), 0);
     }
 
     private static List<byte[]> materialized(

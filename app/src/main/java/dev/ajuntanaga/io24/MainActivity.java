@@ -15,6 +15,8 @@ import android.hardware.usb.UsbManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
@@ -76,11 +78,18 @@ public final class MainActivity extends Activity {
     private TextView connectionStatus;
     private TextView connectionDetail;
     private Button connect;
-    private Button refresh;
     private Button disconnect;
     private Destination destination = Destination.MIXER;
     private Io24State visibleState = Io24State.defaults();
     private String pendingExportJson;
+    private final Handler polling = new Handler(Looper.getMainLooper());
+    private final Runnable pollTick = new Runnable() {
+        @Override
+        public void run() {
+            controller.poll();
+            polling.postDelayed(this, 500);
+        }
+    };
 
     private final BroadcastReceiver usbReceiver = new BroadcastReceiver() {
         @Override
@@ -159,7 +168,20 @@ public final class MainActivity extends Activity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        polling.post(pollTick);
+    }
+
+    @Override
+    protected void onPause() {
+        polling.removeCallbacks(pollTick);
+        super.onPause();
+    }
+
+    @Override
     protected void onDestroy() {
+        polling.removeCallbacks(pollTick);
         unregisterReceiver(usbReceiver);
         controller.close();
         // Let the controller's queued USB release drain without blocking the
@@ -243,11 +265,6 @@ public final class MainActivity extends Activity {
         connect.setContentDescription("Connect to io24 control");
         connect.setOnClickListener(view -> inspect());
         actions.addView(connect, Ui.weight(1));
-        refresh = Ui.button(this, "Refresh");
-        refresh.setOnClickListener(view -> controller.refresh());
-        LinearLayout.LayoutParams refreshParams = Ui.weight(1);
-        refreshParams.leftMargin = Ui.dp(this, 8);
-        actions.addView(refresh, refreshParams);
         disconnect = Ui.button(this, "Disconnect");
         disconnect.setOnClickListener(view -> controller.disconnect());
         LinearLayout.LayoutParams disconnectParams = Ui.weight(1);
@@ -309,7 +326,7 @@ public final class MainActivity extends Activity {
                 });
         screens.put(Destination.PRESETS, presetsView);
         screens.put(Destination.DEVICE,
-                new DeviceView(this, sink, () -> controller.refresh()));
+                new DeviceView(this, sink));
 
         viewport = new FrameLayout(this);
         LinearLayout.LayoutParams viewportParams = new LinearLayout.LayoutParams(
@@ -403,15 +420,16 @@ public final class MainActivity extends Activity {
         boolean connected = state.connectionStatus()
                 == Io24State.ConnectionStatus.CONNECTED;
         connect.setEnabled(!connected && !state.busy());
-        refresh.setEnabled(connected && !state.busy());
         disconnect.setEnabled(connected || state.busy());
-        for (ControllerView screen : screens.values()) {
+        ControllerView screen = screens.get(destination);
+        if (screen != null) {
             screen.render(state);
         }
     }
 
     private void showDestination(Destination next) {
         destination = next;
+        screens.get(next).render(visibleState);
         viewport.removeAllViews();
         viewport.addView(
                 screens.get(next).view(),

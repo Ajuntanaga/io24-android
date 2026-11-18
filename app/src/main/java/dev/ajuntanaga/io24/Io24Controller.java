@@ -21,6 +21,8 @@ public final class Io24Controller implements AutoCloseable {
     private volatile Listener listener;
     private Io24Control control;
     private long sessionEpoch;
+    private long pendingPollEpoch = -1;
+    private long commandRevision;
 
     public Io24Controller(Executor worker, Executor callbacks) {
         if (worker == null || callbacks == null) {
@@ -92,6 +94,7 @@ public final class Io24Controller implements AutoCloseable {
         synchronized (this) {
             active = control;
             operationEpoch = sessionEpoch;
+            commandRevision++;
         }
         if (active == null || !active.isConnected()) {
             publish(state.buildUpon()
@@ -148,6 +151,7 @@ public final class Io24Controller implements AutoCloseable {
         synchronized (this) {
             active = control;
             operationEpoch = sessionEpoch;
+            commandRevision++;
         }
         if (active == null || !active.isConnected()) {
             publish(state.buildUpon()
@@ -196,9 +200,55 @@ public final class Io24Controller implements AutoCloseable {
                             scene + " stopped after " + completed + " of "
                                     + ordered.size()
                                     + " confirmed controls; the device may be "
-                                    + "partially changed. Reconnect and refresh "
+                                    + "partially changed. Reconnect "
                                     + "before continuing. " + error.getMessage(),
                             error));
+                }
+            }
+        });
+    }
+
+    /** Coalesced readback: never blocks the UI or queues behind pending writes. */
+    public void poll() {
+        final Io24Control active;
+        final long epoch;
+        final long revision;
+        synchronized (this) {
+            active = control;
+            epoch = sessionEpoch;
+            revision = commandRevision;
+            if (active == null || !active.isConnected() || state.busy()
+                    || pendingPollEpoch == epoch) {
+                return;
+            }
+            pendingPollEpoch = epoch;
+        }
+        worker.execute(() -> {
+            try {
+                synchronized (this) {
+                    if (!isCurrent(active, epoch) || state.busy()
+                            || commandRevision != revision) {
+                        return;
+                    }
+                }
+                Io24State refreshed = active.refresh();
+                synchronized (this) {
+                    // A gesture may have queued a write while the read was in flight.
+                    if (isCurrent(active, epoch) && !state.busy()
+                            && commandRevision == revision) {
+                        publish(refreshed.buildUpon().setBusy(false).build());
+                    }
+                }
+            } catch (Io24UsbProbe.ProbeException error) {
+                if (clearIfCurrent(active, epoch)) {
+                    active.close();
+                    publishError(state, error);
+                }
+            } finally {
+                synchronized (this) {
+                    if (pendingPollEpoch == epoch) {
+                        pendingPollEpoch = -1;
+                    }
                 }
             }
         });
@@ -210,6 +260,7 @@ public final class Io24Controller implements AutoCloseable {
         synchronized (this) {
             active = control;
             operationEpoch = sessionEpoch;
+            commandRevision++;
         }
         if (active == null || !active.isConnected()) {
             return;
@@ -281,7 +332,11 @@ public final class Io24Controller implements AutoCloseable {
         state = next;
         Listener current = listener;
         if (current != null) {
-            callbacks.execute(() -> current.onState(next));
+            callbacks.execute(() -> {
+                if (listener == current && state == next) {
+                    current.onState(next);
+                }
+            });
         }
     }
 

@@ -123,6 +123,11 @@ public final class GraphMath {
                     shelf[band],
                     sampleRateHz);
         }
+        return eqCoefficientCurve(coefficients, sampleRateHz, width, height);
+    }
+
+    static float[] eqCoefficientCurve(float[][] coefficients, int sampleRateHz, int width, int height) {
+        if (sampleRateHz <= 0 || width <= 0 || height <= 0) throw new IllegalArgumentException("Invalid EQ dimensions or rate");
         float[] trace = new float[POINTS];
         double lowLog = Math.log(20.0);
         double rangeLog = Math.log(20_000.0) - lowLog;
@@ -161,18 +166,15 @@ public final class GraphMath {
             double frequency,
             int sampleRateHz) {
         double angle = 2.0 * Math.PI * frequency / sampleRateHz;
-        double cos1 = Math.cos(angle);
-        double sin1 = Math.sin(angle);
-        double cos2 = Math.cos(angle * 2.0);
-        double sin2 = Math.sin(angle * 2.0);
-        double numeratorReal = coefficients[0]
-                + coefficients[2] * cos1 + coefficients[4] * cos2;
-        double numeratorImaginary = -coefficients[2] * sin1
-                - coefficients[4] * sin2;
-        double denominatorReal = 1.0
-                - coefficients[1] * cos1 - coefficients[3] * cos2;
-        double denominatorImaginary = coefficients[1] * sin1
-                + coefficients[3] * sin2;
+        double numeratorReal = coefficients[0], numeratorImaginary = 0;
+        double denominatorReal = 1, denominatorImaginary = 0;
+        for (int order = 1; order <= coefficients.length / 2; order++) {
+            double cosine = Math.cos(angle * order), sine = Math.sin(angle * order);
+            numeratorReal += coefficients[2 * order] * cosine;
+            numeratorImaginary -= coefficients[2 * order] * sine;
+            denominatorReal -= coefficients[2 * order - 1] * cosine;
+            denominatorImaginary += coefficients[2 * order - 1] * sine;
+        }
         double numeratorPower = numeratorReal * numeratorReal
                 + numeratorImaginary * numeratorImaginary;
         double denominatorPower = denominatorReal * denominatorReal

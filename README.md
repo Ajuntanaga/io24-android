@@ -13,7 +13,7 @@ making either controller depend on the other at runtime.
 Android phone -> USB-C -> Revelator io24
 ```
 
-Version 0.3.6 is the current controller build. The earlier 0.1 and 0.2 builds
+Version 0.3.7 is the current controller build. The earlier 0.1 and 0.2 builds
 proved that Android can hold the io24 vendor-control interface while another
 app records and plays USB audio. This version keeps that transport and adds the
 five-screen control surface.
@@ -25,17 +25,22 @@ five-screen control surface.
   Main/Mix A/Mix B routing for both inputs, all three playback pairs, and the
   FX return. Bus mute, solo, assignment, trim, and one-shot **Copy Main** are
   included.
-- **Fat Channel:** variable HPF, gate/expander, Standard compressor, limiter,
-  processing order, and the complete four-band Standard EQ for both inputs.
-  Each EQ band keeps its own power, frequency, gain, and Q; the outer bands
-  switch between peak and shelf. The response graph uses the same native
-  coefficients sent to the io24, and its numbered nodes drag frequency and
-  gain directly.
+- **Fat Channel:** variable HPF, gate/expander, Standard/Tube/FET compressor, limiter,
+  processing order, and Standard, Passive, and Vintage EQ for both inputs.
+  Module buttons show one rack at a time. Gate/Expander has an explicit mode
+  switch, and limiter Release is adjustable. HPF power bypasses the same
+  coefficient filter controlled by Cutoff, retaining its frequency while off.
+  Standard EQ keeps per-band power, frequency, gain, Q, and outer-band shelf
+  switches. Passive has independent boost and attenuation controls; Vintage
+  has stepped frequencies and four gain controls. Each model retains its own
+  settings. The response graph uses the coefficients sent to the io24; Standard
+  also has numbered nodes for dragging frequency and gain.
 - **Effects:** the native Transformer, De-Tuner, Vocoder, Ring Modulator,
   Filters, and Delay racks in the established control order. Every model keeps
   its own parameter settings, while turning one model On turns the other five
   off, matching UC's single active rack. Every editable parameter, including
-  Wet/Dry, changes its graph. The shared native reverb is a separate rack.
+  Wet/Dry, changes its graph. Transformer contains its own private reverb core;
+  hearing reverb from it is expected. The shared native reverb is a separate rack.
 - **Presets & setups:** private whole-setup phone scenes with save, rename,
   delete, load, JSON import, and JSON export. Each input's two front-panel
   blocks can be recalled or replaced through an explicit Input 1/2 and Block
@@ -43,6 +48,13 @@ five-screen control surface.
 - **Device:** session-rate safety, output alignment delay, headphone source,
   mute-sync behavior, front-panel Main-mute readback, and exact connection
   diagnostics.
+
+While connected and in the foreground, the app polls readable hardware state
+at 500 ms intervals. No Refresh button is needed. Polls yield to writes and
+avoid replacing controls during a drag. Gains, mutes, phantom power, output
+levels, and front-panel preset selections can follow hardware changes. The
+io24 state reply does not expose every DSP parameter or mixer route; those
+values remain the app's remembered settings, not hardware readback.
 
 The USB command layer is an allowlist of typed operations. UI code cannot send
 an arbitrary parameter ID or raw firmware record. Disconnect updates the UI
@@ -59,14 +71,14 @@ The current build has three different kinds of evidence:
 | --- | --- |
 | Android USB control plus USB audio | Physically proved on the BLU 1660V with the earlier transport build |
 | Input 2 mute native write | Physically applied; the original short-reply bug was isolated |
-| Ordered ACK drain and fresh state read | Unit tested in 0.3.6 and emulator tested in 0.3.4; needs a new physical run |
-| Mixer, Fat Channel, Voice FX, native reverb, channel 2, and native preset-block builders | Exact offline vectors and protocol tests pass; not yet sent by this APK to the physical io24 |
+| Ordered ACK drain, fresh state read, and automatic polling | Automated protocol and controller tests; current polling awaits physical acceptance |
+| Expanded controls and native builders | Offline vectors and protocol tests; user reports working app and audible Transformer, plus HPF, compressor, and shared-reverb issues; see the physical test record |
 | Five-screen UI, scenes, error recovery, and high-rate guard | Exercised on the 720x1600 Android 15 emulator |
 | Audible Android-hosted DSP | Not implemented and not claimed |
 
 The native DSP byte tests compare the Android builders with the established
 Linux builders for all six Voice FX models, shared reverb, variable HPF, gate,
-Standard compressor, limiter, Standard EQ, and complete firmware-native
+Standard/Tube/FET compressor, limiter, all three EQ models, and complete firmware-native
 `MemP/Stat` block bodies.
 
 ## What the save names mean
@@ -92,7 +104,11 @@ power-cycle proof.
 
 Shared device reverb is block 202, outside the firmware's per-input `Stat`
 record. It stays in phone scenes and is reapplied by the app rather than being
-stored in a front-panel block.
+stored in a front-panel block. Enabling it opens the FX Return route to Main
+using the app's current mixer level, mute, assignment, solo, and bus trim.
+Subsequent reverb parameter changes leave the mixer alone. For other listening
+buses, set FX Return in Mixer explicitly. Input Processing mix must be above
+zero for the effect path; enabling reverb does not change that setting.
 
 The block button selects which block the front panel uses. Firmware contains a
 conditional stored-body apply path, but selection alone did not reapply the
@@ -124,11 +140,12 @@ safety message.
 
 ## Honest limits
 
-- Android exposes Standard EQ and Standard compression. Passive and Vintage EQ
-  now have DLL-free native calculations in the [Linux Host](https://github.com/Ajuntanaga/io24),
-  but that engine has not been ported to Android. Tube and FET compressor
-  controls also remain unavailable here. Imported alternative models are rejected
-  rather than silently replaced with Standard.
+- Android exposes Standard, Passive, and Vintage EQ, plus Standard, Tube, and
+  FET compression. Their live commands and native preset components use the
+  Linux builders' calculations. The device state reply does not identify these
+  models, so selectors track choices made in this app or a phone scene.
+  Switching models needs physical acceptance, including returning from either
+  alternate EQ to Standard; Android follows the Linux command sequence.
 - Mono-source pan, stereo width, writable names, persistent Mirror Main, and a
   writable front-panel Main-mute latch still have no proved io24 command. Pan
   may exist in imported scene data, but this app does not present it as a
@@ -140,9 +157,20 @@ safety message.
   audio app changes its session rate.
 - De-Tuner, Vocoder, Ring Modulator, and Filters do not yet have decoded native
   front-panel block bodies. The app refuses to silently omit an active one.
-- Multiband compression, auto-leveling, and audible high-rate Delay would require a
-  phone-side audio engine. That engine is not in 0.3.6. The Android **Device
-  reverb** rack controls the io24's native block 202.
+- Multiband compression and the Linux high-rate Delay insert need an audio
+  engine that Android does not implement. The app controls DSP running on the
+  io24; it does not process compressor or reverb audio on the phone CPU.
+- AutoGain is not ported. Linux implements it as a host meter-feedback control
+  loop; exposing the inactive native AutoGain descriptor would not reproduce it.
+- The Android **Device reverb** rack controls native block 202. Its 0.3.7
+  return-routing repair still needs an audible test. Existing hardware routes
+  cannot be read back by the app.
+- Earlier Android HPF power writes used a separate input filter. Each explicit
+  HPF power or cutoff change now clears that legacy filter first, then updates
+  the FAT Channel filter. Connecting and background polling never change HPF.
+- The reported compressor distortion remains unresolved. Default, minimum,
+  and custom attack/release byte vectors match Linux; this does not establish
+  audible behavior or rule out firmware, signal-level, or timing problems.
 
 ## Build and verify
 

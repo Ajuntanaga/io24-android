@@ -80,7 +80,7 @@ public final class Io24CommandTest {
     }
 
     @Test
-    public void fatChannelParametersAreTypedAndAndroidExposesStandardModels() {
+    public void fatChannelParametersAreTypedAndCompressorModelsAreBounded() {
         assertEquals(7.5f, Io24Command.setProcessingParameter(
                 1, "compressor_ratio", 7.5f).value(), 0.0f);
         assertEquals(3.25f, Io24Command.setProcessingParameter(
@@ -89,15 +89,24 @@ public final class Io24CommandTest {
                 2, "eq_low_freq", 18_000.0f).value(), 0.0f);
         assertEquals(1.0f, Io24Command.setProcessingParameter(
                 1, "eq_high_shelf", 1.0f).value(), 0.0f);
+        for (int model = 0; model < 3; model++) {
+            assertEquals(model, Io24Command.setProcessingParameter(1, "compressor_model", model).value(), 0);
+        }
+        assertThrows(IllegalArgumentException.class, () ->
+                Io24Command.setProcessingParameter(1, "compressor_tube_peak", 101));
+        assertThrows(IllegalArgumentException.class, () ->
+                Io24Command.setProcessingParameter(1, "compressor_fet_ratio_index", 5));
+        assertThrows(IllegalArgumentException.class, () ->
+                Io24Command.setProcessingParameter(1, "compressor_fet_attack", 0.000020f));
         assertThrows(IllegalArgumentException.class, () ->
                 Io24Command.setProcessingParameter(1, "unknown", 1));
         assertThrows(IllegalArgumentException.class, () ->
                 Io24Command.setProcessingParameter(1, "hpf_on", 1));
         assertThrows(IllegalArgumentException.class, () ->
                 Io24Command.setProcessingParameter(
-                        1, "compressor_model", 1));
+                        1, "compressor_model", 3));
         assertThrows(IllegalArgumentException.class, () ->
-                Io24Command.setProcessingParameter(1, "eq_model", 2));
+                Io24Command.setProcessingParameter(1, "eq_model", 3));
         assertThrows(IllegalArgumentException.class, () ->
                 Io24Command.setProcessingParameter(1, "eq_himid_q", 10.01f));
         assertThrows(IllegalArgumentException.class, () ->
