@@ -59,7 +59,8 @@ final class FatChannelView implements ControllerView {
     private int channel = 1;
     private boolean rendering;
     private final LinearLayout[] modules = new LinearLayout[5];
-    private final Button[] moduleButtons = new Button[5];
+    private final FatModuleNode[] moduleButtons = new FatModuleNode[5];
+    private final LinearLayout moduleChain;
     private int selectedModule;
 
     FatChannelView(Context context, CommandSink sink) {
@@ -91,26 +92,19 @@ final class FatChannelView implements ControllerView {
         });
         content.addView(inputSelector, Ui.spaced(context));
 
-        String[] moduleNames = {"HPF", "Gate", "Comp", "Limiter", "EQ"};
-        // Two short rows stay legible on a phone and at large text sizes.
-        for (int rowIndex = 0; rowIndex < 2; rowIndex++) {
-            LinearLayout row = Ui.row(context);
-            int first = rowIndex == 0 ? 0 : 3;
-            int end = rowIndex == 0 ? 3 : 5;
-            for (int index = first; index < end; index++) {
-                final int module = index;
-                Button button = Ui.button(context, moduleNames[index]);
-                button.setContentDescription("Show " + moduleNames[index] + " module");
-                button.setOnClickListener(view -> showModule(module));
-                moduleButtons[index] = button;
-                LinearLayout.LayoutParams params = Ui.weight(1);
-                if (index > first) {
-                    params.leftMargin = Ui.dp(context, 8);
-                }
-                row.addView(button, params);
-            }
-            content.addView(row, Ui.spaced(context));
+        String[] moduleNames = {"HPF", "Gate", "Compressor", "Limiter", "Equaliser"};
+        moduleChain = Ui.row(context);
+        android.widget.HorizontalScrollView chainScroll = new android.widget.HorizontalScrollView(context);
+        chainScroll.setHorizontalScrollBarEnabled(true);
+        for (int index = 0; index < moduleNames.length; index++) {
+            final int module = index;
+            FatModuleNode node = new FatModuleNode(context, index, moduleNames[index]);
+            node.setOnClickListener(view -> showModule(module));
+            moduleButtons[index] = node;
         }
+        arrangeModules(false);
+        chainScroll.addView(moduleChain);
+        content.addView(chainScroll, Ui.spaced(context));
 
         LinearLayout filter = Ui.panel(context);
         modules[0] = filter;
@@ -462,6 +456,10 @@ final class FatChannelView implements ControllerView {
                     values, "eq_" + keys[index] + "_q", 0.6f));
         }
         eqFirst.setChecked(on(values, "eq_first"));
+        arrangeModules(on(values, "eq_first"));
+        for (FatModuleNode node : moduleButtons) {
+            node.render(state, channel);
+        }
         rendering = false;
         updateGraphs();
         highPassOn.setEnabled(enabled);
@@ -630,14 +628,27 @@ final class FatChannelView implements ControllerView {
                 eqOn.isChecked());
     }
 
+    private void arrangeModules(boolean eqBefore) {
+        int[] order = eqBefore ? new int[] {0, 1, 4, 2, 3} : new int[] {0, 1, 2, 4, 3};
+        if (moduleChain.getChildCount() == 5 && moduleChain.getChildAt(2) == moduleButtons[order[2]]) {
+            return;
+        }
+        moduleChain.removeAllViews();
+        Context context = moduleChain.getContext();
+        float scale = Math.max(1f, context.getResources().getConfiguration().fontScale);
+        for (int index : order) {
+            moduleChain.addView(moduleButtons[index], new LinearLayout.LayoutParams(
+                    Ui.dp(context, Math.round(148 * scale)), Ui.dp(context, Math.round(132 * scale))));
+        }
+    }
+
     private void showModule(int selected) {
         selectedModule = selected;
         for (int index = 0; index < modules.length; index++) {
             boolean active = index == selectedModule;
             modules[index].setVisibility(active ? View.VISIBLE : View.GONE);
             moduleButtons[index].setSelected(active);
-            moduleButtons[index].setTextColor(moduleButtons[index].getContext()
-                    .getColor(active ? R.color.accent : R.color.text_primary));
+            moduleButtons[index].invalidate();
             if (android.os.Build.VERSION.SDK_INT >= 30) {
                 moduleButtons[index].setStateDescription(active ? "Selected" : "");
             }

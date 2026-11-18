@@ -113,6 +113,7 @@ final class Ui {
         toggle.setTextSize(14);
         toggle.setTextColor(context.getColor(R.color.text_primary));
         toggle.setMinHeight(dp(context, 48));
+        toggle.setSwitchPadding(dp(context, 12));
         ColorStateList tint = new ColorStateList(
                 new int[][] {
                         new int[] {android.R.attr.state_checked},
@@ -133,6 +134,13 @@ final class Ui {
                         context.getColor(R.color.line)
                 }));
         return toggle;
+    }
+
+    static LinearLayout.LayoutParams compactToggle(Context context) {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        params.setMarginEnd(dp(context, 20));
+        return params;
     }
 
     static SeekBar seek(Context context, int max) {

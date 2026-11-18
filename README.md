@@ -18,6 +18,36 @@ proved that Android can hold the io24 vendor-control interface while another
 app records and plays USB audio. This version keeps that transport and adds the
 five-screen control surface.
 
+## Recording a take (unreleased)
+
+Open **Record**, choose **Input 1**, **Input 2**, or **Inputs 1 + 2**, and tap
+**Record**. Allow Android's microphone permission, then tap Record again. Tap
+**Stop & save** to finish a 48 kHz, 16-bit WAV take. Takes are stored on the phone
+inside the app and appear under Saved takes. **Save to Files** copies one to a
+folder you choose; **Share** opens Android's share sheet. Export important takes
+before uninstalling or clearing app storage.
+
+Keep UniCont in the foreground while recording. The screen stays awake during a
+take; switching apps or locking the phone stops and saves it. A disconnected or
+changed audio route stops recording rather than capturing the phone microphone.
+Use the io24's direct monitoring to hear yourself without phone monitoring delay.
+The recorder uses the first stereo USB input pair; the signal and effects sent
+to those channels depend on io24 routing and need not match the headphone mix.
+Android must expose the interface as an io24/Revelator USB audio input. This
+feature does not select an input for other camera apps or add phone-side effects.
+
+Recorder unit/build and emulator checks do not establish live USB capture or wet
+FX routing; those still require a phone/interface recording test.
+
+## AutoGain
+
+Each input has an **AutoGain** switch. While the app is in the foreground, it
+uses fresh io24 meter readings to adjust preamp gain toward -12 dBFS. It waits
+for a quiet gap for normal adjustments, limits each change, and avoids raising
+silence or steady noise. Linked inputs use the louder signal. Manual gain or
+link changes, disconnecting, or leaving the app turn it off. This is app-driven
+control, not a setting saved in device firmware or presets.
+
 ## What is in the app
 
 - **Mixer:** both preamps, shared variable-cutoff high-pass filters, input mute,

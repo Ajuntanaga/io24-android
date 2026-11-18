@@ -89,7 +89,7 @@ final class MixerView implements ControllerView {
                 sink.dispatch(Io24Command.setHeadphoneMute(checked));
             }
         });
-        monitorPanel.addView(headphoneMute, Ui.match());
+        monitorPanel.addView(headphoneMute, Ui.compactToggle(context));
 
         monitorValue = Ui.label(context, "Monitor blend: center");
         monitorPanel.addView(monitorValue, Ui.spaced(context));
@@ -149,7 +149,7 @@ final class MixerView implements ControllerView {
                 sink.dispatch(Io24Command.setBusMute(selectedBus, checked));
             }
         });
-        busFlags.addView(busMute, Ui.weight(1));
+        busFlags.addView(busMute, Ui.compactToggle(context));
         mirrorMain = Ui.button(context, "Copy Main");
         mirrorMain.setContentDescription("Copy current Main mix levels to selected mix");
         mirrorMain.setOnClickListener(button -> {

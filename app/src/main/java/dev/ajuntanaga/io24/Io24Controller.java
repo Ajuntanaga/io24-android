@@ -23,6 +23,44 @@ public final class Io24Controller implements AutoCloseable {
     private long sessionEpoch;
     private long pendingPollEpoch = -1;
     private long commandRevision;
+    private final boolean[] autoGainOn = new boolean[2];
+    private final AutoGain[] autoGain = {new AutoGain(), new AutoGain()};
+
+    public synchronized boolean autoGainEnabled(int channel) {
+        return autoGainOn[channel - 1];
+    }
+
+    public synchronized void setAutoGain(int channel, boolean on) {
+        if (channel < 1 || channel > 2) throw new IllegalArgumentException("Input must be 1 or 2");
+        autoGainOn[channel - 1] = on;
+        if (state.linked()) autoGainOn[2 - channel] = on;
+        for (AutoGain gain : autoGain) gain.reset();
+        publish(state);
+    }
+
+    public synchronized void stopAutoGain() {
+        autoGainOn[0] = autoGainOn[1] = false;
+        for (AutoGain gain : autoGain) gain.reset();
+    }
+
+    private void applyAutoGain(Io24State fresh) {
+        double now = System.nanoTime() / 1e9;
+        boolean linked = fresh.linked();
+        for (int i = 0; i < 2; i++) {
+            if (!autoGainOn[i]) continue;
+            float level = fresh.input(i + 1).level();
+            if (linked) level = Math.max(fresh.input(1).level(), fresh.input(2).level());
+            Float gain = autoGain[i].step(now, level, fresh.input(i + 1).gainDb());
+            if (gain != null) {
+                List<Io24Command> commands = new ArrayList<>();
+                commands.add(Io24Command.setGain(i + 1, gain));
+                if (linked) commands.add(Io24Command.setGain(2 - i, gain));
+                dispatchAll(commands, "AutoGain");
+            }
+            if (linked) break;
+        }
+    }
+
 
     public Io24Controller(Executor worker, Executor callbacks) {
         if (worker == null || callbacks == null) {
@@ -45,8 +83,11 @@ public final class Io24Controller implements AutoCloseable {
             throw new IllegalArgumentException("Session factory is required");
         }
         final long requestedEpoch;
+        final Io24Control previous;
         synchronized (this) {
             requestedEpoch = ++sessionEpoch;
+            previous = control;
+            control = null;
         }
         Io24State pending = state.buildUpon()
                 .setConnection(
@@ -57,22 +98,22 @@ public final class Io24Controller implements AutoCloseable {
                 .build();
         publish(pending);
         worker.execute(() -> {
+            // Release the previous USB claim before opening its replacement,
+            // even if this connection request has already been superseded.
+            if (previous != null) {
+                previous.close();
+            }
             if (!isCurrentEpoch(requestedEpoch)) {
                 return;
             }
             try {
                 Io24Control opened = factory.open();
-                Io24Control previous;
                 synchronized (this) {
                     if (sessionEpoch != requestedEpoch) {
                         opened.close();
                         return;
                     }
-                    previous = control;
                     control = opened;
-                }
-                if (previous != null) {
-                    previous.close();
                 }
                 publish(opened.currentState().buildUpon()
                         .setBusy(false)
@@ -86,6 +127,8 @@ public final class Io24Controller implements AutoCloseable {
     }
 
     public void dispatch(Io24Command command) {
+        if (command != null && (command.kind() == Io24Command.Kind.SET_GAIN
+                || command.kind() == Io24Command.Kind.SET_LINK)) stopAutoGain();
         if (command == null) {
             throw new IllegalArgumentException("Command is required");
         }
@@ -95,6 +138,7 @@ public final class Io24Controller implements AutoCloseable {
             active = control;
             operationEpoch = sessionEpoch;
             commandRevision++;
+            for (AutoGain gain : autoGain) gain.reset();
         }
         if (active == null || !active.isConnected()) {
             publish(state.buildUpon()
@@ -152,6 +196,7 @@ public final class Io24Controller implements AutoCloseable {
             active = control;
             operationEpoch = sessionEpoch;
             commandRevision++;
+            for (AutoGain gain : autoGain) gain.reset();
         }
         if (active == null || !active.isConnected()) {
             publish(state.buildUpon()
@@ -176,6 +221,7 @@ public final class Io24Controller implements AutoCloseable {
                 return;
             }
             int completed = 0;
+            Io24State lastConfirmed = confirmedBefore;
             try {
                 CommandResult result = null;
                 for (Io24Command command : ordered) {
@@ -183,6 +229,7 @@ public final class Io24Controller implements AutoCloseable {
                         return;
                     }
                     result = active.execute(command);
+                    lastConfirmed = result.state();
                     completed++;
                 }
                 if (!isCurrent(active, operationEpoch)) {
@@ -196,7 +243,7 @@ public final class Io24Controller implements AutoCloseable {
                 if (clearIfCurrent(active, operationEpoch)) {
                     active.close();
                     String scene = label == null ? "Scene" : label;
-                    publishError(confirmedBefore, new Io24UsbProbe.ProbeException(
+                    publishError(lastConfirmed, new Io24UsbProbe.ProbeException(
                             scene + " stopped after " + completed + " of "
                                     + ordered.size()
                                     + " confirmed controls; the device may be "
@@ -237,6 +284,7 @@ public final class Io24Controller implements AutoCloseable {
                     if (isCurrent(active, epoch) && !state.busy()
                             && commandRevision == revision) {
                         publish(refreshed.buildUpon().setBusy(false).build());
+                        applyAutoGain(refreshed);
                     }
                 }
             } catch (Io24UsbProbe.ProbeException error) {
@@ -261,6 +309,7 @@ public final class Io24Controller implements AutoCloseable {
             active = control;
             operationEpoch = sessionEpoch;
             commandRevision++;
+            for (AutoGain gain : autoGain) gain.reset();
         }
         if (active == null || !active.isConnected()) {
             return;
@@ -328,7 +377,8 @@ public final class Io24Controller implements AutoCloseable {
                 .build());
     }
 
-    private void publish(Io24State next) {
+    private synchronized void publish(Io24State next) {
+        if (next.connectionStatus() != Io24State.ConnectionStatus.CONNECTED) stopAutoGain();
         state = next;
         Listener current = listener;
         if (current != null) {

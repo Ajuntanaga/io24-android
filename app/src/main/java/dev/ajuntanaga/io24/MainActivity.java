@@ -54,7 +54,8 @@ public final class MainActivity extends Activity {
         FAT_CHANNEL("Fat"),
         EFFECTS("Effects"),
         PRESETS("Presets"),
-        DEVICE("Device");
+        DEVICE("Device"),
+        RECORDER("Record");
 
         final String label;
 
@@ -72,6 +73,11 @@ public final class MainActivity extends Activity {
             new EnumMap<>(Destination.class);
     private UsbManager usbManager;
     private Io24Controller controller;
+    private TakeRecorder takeRecorder;
+    private RecorderView recorderView;
+    private java.io.File pendingTakeExport;
+    private static final int REQUEST_RECORD_PERMISSION = 41;
+    private static final int REQUEST_EXPORT_TAKE = 42;
     private PresetStore presetStore;
     private PresetsView presetsView;
     private FrameLayout viewport;
@@ -87,7 +93,9 @@ public final class MainActivity extends Activity {
         @Override
         public void run() {
             controller.poll();
-            polling.postDelayed(this, 500);
+            if (recorderView != null) recorderView.refresh();
+            polling.postDelayed(this, controller.autoGainEnabled(1)
+                    || controller.autoGainEnabled(2) ? 100 : 500);
         }
     };
 
@@ -124,6 +132,12 @@ public final class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
         presetStore = new PresetStore(this);
+        takeRecorder = new TakeRecorder(this);
+        takeRecorder.setListener(() -> {
+            if (recorderView != null) recorderView.refresh();
+            if (takeRecorder.busy()) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            else getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        });
         controller = new Io24Controller(worker, this::runOnUiThread);
         controller.setListener(this::render);
         if (savedInstanceState != null) {
@@ -176,6 +190,8 @@ public final class MainActivity extends Activity {
     @Override
     protected void onPause() {
         polling.removeCallbacks(pollTick);
+        controller.stopAutoGain();
+        takeRecorder.stop();
         super.onPause();
     }
 
@@ -183,6 +199,8 @@ public final class MainActivity extends Activity {
     protected void onDestroy() {
         polling.removeCallbacks(pollTick);
         unregisterReceiver(usbReceiver);
+        takeRecorder.stop();
+        takeRecorder.setListener(() -> {});
         controller.close();
         // Let the controller's queued USB release drain without blocking the
         // main thread or cancelling interface cleanup.
@@ -291,6 +309,13 @@ public final class MainActivity extends Activity {
         root.addView(banner, Ui.match());
 
         CommandSink sink = new CommandSink() {
+            @Override public void setAutoGain(int channel, boolean on) {
+                controller.setAutoGain(channel, on);
+            }
+            @Override public boolean autoGainEnabled(int channel) {
+                return controller.autoGainEnabled(channel);
+            }
+
             @Override
             public void dispatch(Io24Command command) {
                 controller.dispatch(command);
@@ -328,6 +353,9 @@ public final class MainActivity extends Activity {
         screens.put(Destination.DEVICE,
                 new DeviceView(this, sink));
 
+        recorderView = new RecorderView(this, takeRecorder, this::startTake, this::exportTake);
+        screens.put(Destination.RECORDER, recorderView);
+
         viewport = new FrameLayout(this);
         LinearLayout.LayoutParams viewportParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.0f);
@@ -348,7 +376,7 @@ public final class MainActivity extends Activity {
             }
             nav.addView(button, params);
         }
-        root.addView(largeControls ? scrollButtonRow(nav) : nav, Ui.match());
+        root.addView(scrollButtonRow(nav), Ui.match());
         return root;
     }
 
@@ -472,6 +500,32 @@ public final class MainActivity extends Activity {
         startActivityForResult(intent, REQUEST_EXPORT_SCENE);
     }
 
+    private void startTake(int channel) {
+        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, REQUEST_RECORD_PERMISSION);
+            return;
+        }
+        takeRecorder.start(channel);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+        if (requestCode == REQUEST_RECORD_PERMISSION) {
+            boolean allowed = results.length > 0 && results[0] == android.content.pm.PackageManager.PERMISSION_GRANTED;
+            android.widget.Toast.makeText(this, allowed ? "Ready. Tap Record to start your take."
+                    : "Microphone permission is required for USB audio recording.", android.widget.Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void exportTake(java.io.File file) {
+        pendingTakeExport = file;
+        startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE).setType("audio/wav")
+                .putExtra(Intent.EXTRA_TITLE, file.getName()), REQUEST_EXPORT_TAKE);
+    }
+
     private void requestSceneImport() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT)
                 .addCategory(Intent.CATEGORY_OPENABLE)
@@ -486,6 +540,24 @@ public final class MainActivity extends Activity {
             return;
         }
         Uri uri = data.getData();
+        if (requestCode == REQUEST_EXPORT_TAKE && pendingTakeExport != null) {
+            java.io.File take = pendingTakeExport;
+            pendingTakeExport = null;
+            new Thread(() -> {
+                String message;
+                try (InputStream input = new java.io.FileInputStream(take);
+                        OutputStream output = getContentResolver().openOutputStream(uri, "wt")) {
+                    if (output == null) throw new IOException("Cannot open destination");
+                    byte[] buffer = new byte[65536];
+                    int count;
+                    while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
+                    message = "Take saved to Files";
+                } catch (IOException error) { message = "Save failed: " + error.getMessage(); }
+                final String notice = message;
+                runOnUiThread(() -> android.widget.Toast.makeText(this, notice, android.widget.Toast.LENGTH_LONG).show());
+            }, "io24-take-export").start();
+            return;
+        }
         try {
             if (requestCode == REQUEST_EXPORT_SCENE && pendingExportJson != null) {
                 try (OutputStream output = getContentResolver().openOutputStream(uri, "wt")) {

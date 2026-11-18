@@ -37,7 +37,7 @@ final class MixerStripView extends LinearLayout {
                 sink.dispatch(Io24Command.setMixerAssigned(source, bus, checked));
             }
         });
-        heading.addView(assigned, Ui.weight(1));
+        heading.addView(assigned, Ui.compactToggle(context));
         addView(heading, Ui.match());
 
         levelValue = Ui.caption(context, "0.0 dB");
@@ -58,7 +58,7 @@ final class MixerStripView extends LinearLayout {
                 sink.dispatch(Io24Command.setMixerMute(source, checked));
             }
         });
-        flags.addView(mute, Ui.weight(1));
+        flags.addView(mute, Ui.compactToggle(context));
         solo = Ui.toggle(context, "Solo");
         solo.setContentDescription(source.label() + " solo in " + bus.label());
         solo.setOnCheckedChangeListener((button, checked) -> {
@@ -66,7 +66,7 @@ final class MixerStripView extends LinearLayout {
                 sink.dispatch(Io24Command.setMixerSolo(source, bus, checked));
             }
         });
-        flags.addView(solo, Ui.weight(1));
+        flags.addView(solo, Ui.compactToggle(context));
         addView(flags, Ui.match());
     }
 

@@ -17,6 +17,7 @@ final class InputStripView extends LinearLayout {
     private final TextView gainValue;
     private final SeekBar gain;
     private final Switch phantom;
+    private final Switch autoGain;
     private final Switch highPass;
     private final Switch mute;
     private final TextView fxMixValue;
@@ -46,6 +47,14 @@ final class InputStripView extends LinearLayout {
                 value -> sink.dispatch(Io24Command.setGain(channel, value / 2.0f)),
                 value -> gainValue.setText("Gain " + Ui.db(value / 2.0f))));
         addView(gain, Ui.match());
+
+        autoGain = Ui.toggle(context, "AutoGain");
+        autoGain.setContentDescription("Input " + channel + " automatic preamp gain");
+        autoGain.setOnCheckedChangeListener((button, checked) -> {
+            if (!rendering) sink.setAutoGain(channel, checked);
+        });
+        addView(autoGain, Ui.compactToggle(context));
+        addView(Ui.label(context, "Adjusts gain while this app is open"), Ui.spaced(context));
 
         boolean largeText = getResources().getConfiguration().fontScale >= 1.7f;
         LinearLayout toggles = largeText ? Ui.column(context) : Ui.row(context);
@@ -93,6 +102,7 @@ final class InputStripView extends LinearLayout {
         Io24State.Input input = state.input(channel);
         gain.setProgress(Math.round(input.gainDb() * 2.0f));
         gainValue.setText("Gain " + Ui.db(input.gainDb()));
+        autoGain.setChecked(sink.autoGainEnabled(channel));
         phantom.setChecked(input.phantom());
         highPass.setChecked(input.highPass());
         mute.setChecked(input.muted());

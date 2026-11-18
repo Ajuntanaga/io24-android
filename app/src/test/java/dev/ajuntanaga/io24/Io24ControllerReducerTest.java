@@ -29,6 +29,60 @@ public final class Io24ControllerReducerTest {
     }
 
     @Test
+    public void autoGainLinkedControlsAndManualOverride() {
+        SimulatedIo24Control control = new SimulatedIo24Control(
+                new SimulatedIo24Control.DeviceState(false), false);
+        Io24Controller controller = new Io24Controller(DIRECT, DIRECT);
+        controller.connect(() -> { control.connectAndRead(); return control; });
+        controller.dispatch(Io24Command.setLinked(true));
+        controller.setAutoGain(1, true);
+        assertTrue(controller.autoGainEnabled(1));
+        assertTrue(controller.autoGainEnabled(2));
+        controller.setAutoGain(2, false);
+        assertFalse(controller.autoGainEnabled(1));
+        controller.setAutoGain(1, true);
+        controller.dispatch(Io24Command.setGain(1, 20));
+        assertFalse(controller.autoGainEnabled(1));
+        assertFalse(controller.autoGainEnabled(2));
+        controller.setAutoGain(2, true);
+        controller.disconnect();
+        assertFalse(controller.autoGainEnabled(1));
+        assertFalse(controller.autoGainEnabled(2));
+    }
+
+    @Test
+    public void failedReconnectReleasesOldSessionBeforeOpeningReplacement() {
+        SimulatedIo24Control old = new SimulatedIo24Control(
+                new SimulatedIo24Control.DeviceState(false), false);
+        Io24Controller controller = new Io24Controller(DIRECT, DIRECT);
+        controller.connect(() -> { old.connectAndRead(); return old; });
+        controller.connect(() -> {
+            assertFalse(old.isConnected());
+            throw new Io24UsbProbe.ProbeException("Replacement failed");
+        });
+        controller.poll();
+        assertEquals(Io24State.ConnectionStatus.ERROR,
+                controller.state().connectionStatus());
+        assertEquals("Replacement failed", controller.state().statusMessage());
+    }
+
+    @Test
+    public void supersededReconnectStillReleasesPreviousSession() {
+        QueuedExecutor worker = new QueuedExecutor();
+        SimulatedIo24Control old = new SimulatedIo24Control(
+                new SimulatedIo24Control.DeviceState(false), false);
+        Io24Controller controller = new Io24Controller(worker, DIRECT);
+        controller.connect(() -> { old.connectAndRead(); return old; });
+        worker.runNext();
+        controller.connect(() -> { throw new AssertionError("Stale open"); });
+        controller.disconnect();
+        worker.runNext();
+        assertFalse(old.isConnected());
+        assertEquals(Io24State.ConnectionStatus.DISCONNECTED,
+                controller.state().connectionStatus());
+    }
+
+    @Test
     public void pollingCoalescesAndReflectsHardwareChangesWithoutBusyFlicker() {
         QueuedExecutor worker = new QueuedExecutor();
         SimulatedIo24Control.DeviceState device = new SimulatedIo24Control.DeviceState(false);
@@ -231,6 +285,7 @@ public final class Io24ControllerReducerTest {
         assertEquals(Io24State.ConnectionStatus.ERROR,
                 controller.state().connectionStatus());
         assertTrue(controller.state().statusMessage().contains("after 1 of 2"));
+        assertEquals(0.25f, controller.state().input(1).fxMix(), 0.0f);
         assertTrue(controller.state().statusMessage()
                 .contains("may be partially changed"));
         assertFalse(control.isConnected());

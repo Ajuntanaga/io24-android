@@ -1,5 +1,36 @@
 # Changelog
 
+## Unreleased
+
+- Add per-input foreground AutoGain using fresh input meters, a three-second
+  observation window, quiet-gap adjustments, clipping reduction, and bounded
+  preamp changes. Linked inputs share the louder meter. Manual gain/link changes,
+  leaving the app, and connection loss turn AutoGain off.
+
+- Keep Monitoring and Routing switches beside their labels, with 48 dp touch targets.
+
+- Match FAT module selectors to the Linux host: channel-coloured signal-chain
+  tiles, power LEDs, miniature response graphs, selected outlines, and EQ/Comp
+  ordering. The chain scrolls horizontally on phones; one rack remains open.
+
+- Add a foreground WAV recorder with Input 1, Input 2, and stereo capture, elapsed
+  time, automatic on-phone take storage, Save to Files, and sharing. Capture
+  requires a named io24 USB audio route; routing loss stops the take. Leaving
+  the app stops and finalizes recording. No phone-microphone fallback.
+
+- Release the previous control session before reconnecting, including failed or
+  cancelled reconnects, so an old USB claim cannot interfere with the new session.
+- Keep confirmed scene changes visible if a later command fails, while reporting
+  the partial application and requiring reconnection.
+
+### Verification
+
+- 107 Java tests pass; lint and the debug APK build pass. The updated APK is
+  installed on the phone, and the AutoGain layout has been checked there.
+- Live io24 AutoGain adjustment and recorder capture/export still need physical
+  testing. HPF bypass, block-202 audibility, hardware following, and model
+  transitions also remain listening/hardware checks.
+
 ## 0.3.7 - 2026-11-17
 
 ### Phone-test repairs
@@ -30,10 +61,10 @@
   currency warnings; the debug APK builds successfully.
 - Emulator checks cover all model panels, retained settings, response graphs,
   portrait, landscape, and 130% text size. No emulator crashes were recorded.
-- This repair build has not been installed on the phone. Physical checks remain
-  for HPF bypass, block-202 audibility, hardware following, and model transitions.
+- At this release checkpoint, phone installation and physical checks were still
+  pending; see Unreleased for the current installation and verification status.
 - The reported Standard-compressor distortion remains unresolved. Audio runs
-  on the io24, not the phone CPU. AutoGain is still not ported from Linux.
+  on the io24, not the phone CPU. AutoGain was added subsequently (see Unreleased).
 - See [BUILD_REPORT.md](BUILD_REPORT.md) for the APK hash and
   [LIVE_TEST_REPORT.md](LIVE_TEST_REPORT.md) for the user observations.
 
